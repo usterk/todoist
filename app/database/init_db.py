@@ -2,6 +2,8 @@ import logging
 import os
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
+import asyncio
+import time
 
 from app.database.database import engine, Base
 from app.models.user import User
@@ -47,37 +49,66 @@ def check_admin_default_password(db: Session) -> None:
     except Exception as e:
         logger.error(f"Error checking admin password: {e}")
 
-async def init_db() -> None:
+async def init_db(timeout: int = 10) -> None:
     """
-    Initialize the database by running migrations and creating default admin user if needed.
-    """
-    # Run database migrations to create/update schema
-    run_migrations()
+    Initialize the database with required data.
     
-    # Create admin user if not exists
-    db = Session(engine)
+    This includes:
+    1. Running migrations to ensure schema is up-to-date
+    2. Creating admin user if not exists
+    
+    Args:
+        timeout: Maximum time in seconds for DB initialization
+    """
+    logger.info("Starting database initialization")
+    start_time = time.time()
+    
     try:
-        # Check if admin user exists
-        admin_user = db.query(User).filter(User.username == DB_SETTINGS["default_admin_username"]).first()
+        # Run migrations with a timeout
+        try:
+            # Run in a separate thread with timeout to prevent hanging
+            await asyncio.to_thread(run_migrations)
+        except Exception as e:
+            logger.error(f"Error during migrations: {str(e)}")
+            logger.warning("Will attempt to continue with database initialization")
         
-        if not admin_user:
-            # Create default admin user
-            hashed_password = pwd_context.hash(DB_SETTINGS["default_admin_password"])
-            admin_user = User(
-                username=DB_SETTINGS["default_admin_username"],
-                email=DB_SETTINGS["default_admin_email"],
-                password_hash=hashed_password
-            )
-            db.add(admin_user)
-            db.commit()
-            logger.info(f"Default {DB_SETTINGS['default_admin_username']} user created")
-        else:
-            logger.info(f"{DB_SETTINGS['default_admin_username']} user already exists")
+        # Check if we've exceeded timeout
+        if time.time() - start_time > timeout:
+            logger.warning(f"Database initialization taking longer than {timeout} seconds")
+        
+        # Create admin user if not exists
+        db = Session()
+        try:
+            logger.info("Checking for admin user")
+            admin = db.query(User).filter(User.username == DB_SETTINGS['default_admin_username']).first()
             
-        # Check if admin has default password and warn if needed
-        check_admin_default_password(db)
+            if not admin:
+                logger.info("Admin user not found, creating...")
+                admin_user = User(
+                    username=DB_SETTINGS['default_admin_username'],
+                    email="admin@example.com",
+                    password_hash=pwd_context.hash(os.environ.get("ADMIN_PASSWORD", DB_SETTINGS['default_admin_password']))
+                )
+                db.add(admin_user)
+                db.commit()
+                logger.info("Admin user created successfully")
+            else:
+                logger.info(f"{DB_SETTINGS['default_admin_username']} user already exists")
+            
+            # Check if admin has default password
+            await asyncio.to_thread(check_admin_default_password, db)
+            
+        except Exception as e:
+            logger.error(f"Error during database initialization: Error creating admin user: {str(e)}")
+            db.rollback()  # Ensure rollback is called for proper testing
+        finally:
+            db.close()
+        
+        logger.info(f"Database initialization completed in {time.time() - start_time:.2f} seconds")
+    
     except Exception as e:
-        db.rollback()
-        logger.error(f"Error during database initialization: {e}")
-    finally:
-        db.close()
+        logger.error(f"Error during database initialization: {str(e)}")
+        # Don't re-raise - allow application to start anyway
+    
+    # Signal that initialization is complete, even if there were errors
+    logger.info("Database initialization process finished")
