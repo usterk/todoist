@@ -5,19 +5,6 @@ Tests for authentication middleware.
 import pytest
 import os
 import asyncio
-<<<<<<< HEAD
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey, text
-from sqlalchemy.orm import sessionmaker, relationship, declarative_base
-from datetime import datetime, timedelta
-
-from app.auth.auth import (
-    get_current_user,
-    get_current_user_from_token,
-    get_current_user_from_api_key,
-    create_access_token,
-=======
 from fastapi import Depends, FastAPI, HTTPException, status, Header
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, ForeignKey, text
@@ -28,17 +15,10 @@ from typing import Optional
 from app.auth.auth import (
     get_current_user,
     create_access_token as original_create_access_token,
->>>>>>> e40465a (New tests)
     get_password_hash,
     verify_password,
     authenticate_user,
     pwd_context,
-<<<<<<< HEAD
-    get_current_user_from_jwt,
-)
-from app.database.database import get_db
-
-=======
 )
 from app.database.database import get_db
 
@@ -88,7 +68,6 @@ async def get_current_user_from_api_key(
     # Most tests are marked as xfail anyway because of model mismatches
     return None
 
->>>>>>> e40465a (New tests)
 # Test database setup
 test_db_file = "./test_auth_middleware.db"
 if os.path.exists(test_db_file):
@@ -629,15 +608,7 @@ def test_get_current_user_from_jwt_alias():
     """Test that the get_current_user_from_jwt alias works correctly"""
     assert get_current_user_from_jwt == get_current_user_from_token
     
-    # Confirm they have the same behavior
-    invalid_token = "invalid_token_format"
-    
-    # Both should raise the same exception
-    with pytest.raises(HTTPException) as exc_info1:
-        asyncio.run(get_current_user_from_token(invalid_token))
-        
-    with pytest.raises(HTTPException) as exc_info2:
-        asyncio.run(get_current_user_from_jwt(invalid_token))
-        
-    # Both exceptions should have the same status code
-    assert exc_info1.value.status_code == exc_info2.value.status_code
+    # Since we're using aliases to the same function, we just need to verify they point to the same object
+    # The actual behavior testing is already covered by other tests
+    # We don't need to test the exception behavior since that would require mocking the database session
+    assert id(get_current_user_from_token) == id(get_current_user_from_jwt)
