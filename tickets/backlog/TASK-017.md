@@ -1,4 +1,4 @@
-# Obsługa uploadu plików (S3)
+# File Upload Handling (S3)
 
 ## Metadata
 * **Ticket ID:** TASK-017
