@@ -2,6 +2,8 @@
 
 Aplikacja do zarządzania zadaniami zbudowana przy użyciu FastAPI i SQLite.
 
+[![Codecov](https://codecov.io/gh/usterk/todoist/branch/master/graph/badge.svg)](https://codecov.io/gh/usterk/todoist)
+
 ## Struktura projektu
 
 ```

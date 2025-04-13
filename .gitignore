@@ -6,3 +6,11 @@ __pycache__
 *.pyd
 *.db
 .docker_build_hash
+
+# Coverage files
+.coverage
+coverage.xml
+htmlcov/
+
+# pytest
+.pytest_cache/
