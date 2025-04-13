@@ -7,19 +7,21 @@ the authentication is working as expected before running full test suite.
 """
 
 import json
+import os
 import pytest
 import requests
 import secrets
 import string
 import time
-import os
 from typing import Dict, Any, Tuple
 
-# Configuration - ważne aby działało zarówno lokalnie, jak i w CI
-# W środowisku lokalnym Docker używamy todoist-container:5000
-# W GitHub Actions używamy localhost:8000 (ustawiane przez GitHub Actions workflow)
-# Domyślnie używamy localhost:5000, co powinno działać przy lokalnym uruchomieniu serwera
-DEFAULT_URL = "http://todoist-container:5000"  # To działa w środowisku Docker
+# Configuration based on environment:
+# - W lokalnym środowisku Docker: domyślnie todoist-container:5000
+# - W GitHub Actions: ustawiane przez zmienną TEST_API_URL=http://localhost:8000
+# Użytkownik może nadpisać tę konfigurację ustawiając zmienną środowiskową TEST_API_URL
+DEFAULT_URL = "http://todoist-container:5000"  # Przywrócenie oryginalnej wartości dla lokalnego środowiska
+
+# Użyj zmiennej środowiskowej jeśli dostępna, w przeciwnym razie użyj domyślnej wartości
 BASE_URL = os.environ.get("TEST_API_URL", DEFAULT_URL)
 
 # Test fixtures

@@ -28,9 +28,42 @@ jobs:
         
     - name: Start API server for testing
       run: |
-        python -m app.main &
-        # Wait for server to start
-        sleep 10
+        # Start the API server in the background on port 8000
+        PORT=8000 python -m app.main &
+        
+        # Store the process ID to terminate it later
+        echo $! > api_server.pid
+        
+        # Wait for server to start by repeatedly checking the health endpoint
+        echo "Waiting for API server to start..."
+        attempt=1
+        max_attempts=30
+        
+        until $(curl --output /dev/null --silent --fail http://localhost:8000/health); do
+          if [ $attempt -ge $max_attempts ]; then
+            echo "API server failed to start after $max_attempts attempts"
+            exit 1
+          fi
+          
+          echo "Attempt $attempt/$max_attempts: API server not ready yet, waiting 1 second..."
+          attempt=$((attempt+1))
+          sleep 1
+        done
+        
+        echo "API server is up and running on port 8000!"
+        curl -s http://localhost:8000/health | jq || echo "curl/jq failed but API is responding"
+        
+    - name: Run API tests
+      env:
+        TEST_API_URL: http://localhost:8000
+      run: |
+        pytest tests/api -v
+        
+    - name: Run local auth tests
+      env:
+        TEST_API_URL: http://localhost:8000
+      run: |
+        pytest test_auth_local.py -v
         
     - name: Run E2E tests
       env:
@@ -39,11 +72,14 @@ jobs:
       run: |
         pytest tests/e2e -v --skip-docker
         
-    - name: Run local auth tests
-      env:
-        TEST_API_URL: http://localhost:8000
+    - name: Stop API server
+      if: always()
       run: |
-        pytest test_auth_local.py -v
+        if [ -f api_server.pid ]; then
+          echo "Stopping API server..."
+          kill $(cat api_server.pid) || true
+          rm api_server.pid
+        fi
         
     - name: Upload test results
       if: always()
