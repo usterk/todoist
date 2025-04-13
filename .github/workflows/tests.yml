@@ -32,8 +32,8 @@ jobs:
     
     - name: Start API server for testing
       run: |
-        # Start the API server in the background on port 8000
-        PORT=8000 python -m app.main &
+        # Start the API server in the background on the default port (5000)
+        python -m app.main &
         
         # Store the process ID to terminate it later
         echo $! > api_server.pid
@@ -43,7 +43,7 @@ jobs:
         attempt=1
         max_attempts=30
         
-        until $(curl --output /dev/null --silent --fail http://localhost:8000/health); do
+        until $(curl --output /dev/null --silent --fail http://localhost:5000/health); do
           if [ $attempt -ge $max_attempts ]; then
             echo "API server failed to start after $max_attempts attempts"
             exit 1
@@ -54,8 +54,8 @@ jobs:
           sleep 1
         done
         
-        echo "API server is up and running on port 8000!"
-        curl -s http://localhost:8000/health | jq || echo "curl/jq failed but API is responding"
+        echo "API server is up and running on port 5000!"
+        curl -s http://localhost:5000/health | jq || echo "API is responding but jq formatting failed"
     
     - name: Run tests
       run: |
@@ -64,6 +64,8 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
         # Dodanie CI=true zapewnia, że test_auth_local.py wykryje środowisko CI
         CI: 'true'
+        # Ustawienie poprawnego URL API dla testów
+        TEST_API_URL: 'http://localhost:5000'
     
     - name: Generate coverage report
       run: |
@@ -71,6 +73,7 @@ jobs:
       env:
         PYTHONPATH: ${{ github.workspace }}
         CI: 'true'
+        TEST_API_URL: 'http://localhost:5000'
     
     - name: Stop API server
       if: always()
