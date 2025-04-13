@@ -4,10 +4,10 @@ import sys
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Dodanie ścieżki katalogu głównego projektu do sys.path
+# Add the project root directory path to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
-# Importowanie modeli i bazy danych
+# Import models and database
 from app.database.database import Base
 from app.models import user
 
@@ -17,7 +17,7 @@ config = context.config
 # Interpret the config file for Python logging.
 fileConfig(config.config_file_name)
 
-# Ustawienie target_metadata na modele z projektu
+# Set target_metadata to models from the project
 target_metadata = Base.metadata
 
 
