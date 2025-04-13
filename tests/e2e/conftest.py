@@ -20,19 +20,37 @@ MAX_RETRY_ATTEMPTS = 5
 RETRY_WAIT_SECONDS = 2
 
 
-def is_running_in_docker() -> bool:
+def pytest_addoption(parser):
+    """Add custom command line options for e2e tests."""
+    parser.addoption(
+        "--skip-docker", 
+        action="store_true", 
+        default=False, 
+        help="Skip Docker container checks, useful in CI environments"
+    )
+
+
+def is_running_in_docker(request=None) -> bool:
     """
     Check if the code is running inside a Docker container.
     
+    Args:
+        request: pytest request object (optional)
+        
     Returns:
         bool: True if running inside Docker, False otherwise
     """
+    # If --skip-docker is passed, always return False
+    if request and request.config.getoption("--skip-docker", False):
+        logger.info("--skip-docker option used, skipping Docker container checks")
+        return False
+    
     # Several ways to check, we'll use the existence of /.dockerenv
     return os.path.exists("/.dockerenv")
 
 
 @pytest.fixture(scope="session")
-def base_url() -> str:
+def base_url(request) -> str:
     """
     Determine the base URL for E2E tests.
     
@@ -46,7 +64,7 @@ def base_url() -> str:
         return base_url
     
     # If in Docker, use container name from environment or default
-    if is_running_in_docker():
+    if is_running_in_docker(request):
         container_name = os.environ.get("API_CONTAINER_NAME", "todoist_app")
         base_url = f"http://{container_name}:5000"
         logger.info(f"Using Docker container networking with URL: {base_url}")

@@ -30,13 +30,20 @@ jobs:
       run: |
         python -m app.main &
         # Wait for server to start
-        sleep 5
+        sleep 10
         
     - name: Run E2E tests
       env:
         E2E_BASE_URL: http://localhost:8000
+        TEST_API_URL: http://localhost:8000
       run: |
-        pytest tests/e2e -v
+        pytest tests/e2e -v --skip-docker
+        
+    - name: Run local auth tests
+      env:
+        TEST_API_URL: http://localhost:8000
+      run: |
+        pytest test_auth_local.py -v
         
     - name: Upload test results
       if: always()

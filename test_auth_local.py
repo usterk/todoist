@@ -12,10 +12,15 @@ import requests
 import secrets
 import string
 import time
+import os
 from typing import Dict, Any, Tuple
 
-# Configuration
-BASE_URL = "http://todoist-container:5000"  # Zmiana z localhost:5000 na todoist-container:5000
+# Configuration - ważne aby działało zarówno lokalnie, jak i w CI
+# W środowisku lokalnym Docker używamy todoist-container:5000
+# W GitHub Actions używamy localhost:8000 (ustawiane przez GitHub Actions workflow)
+# Domyślnie używamy localhost:5000, co powinno działać przy lokalnym uruchomieniu serwera
+DEFAULT_URL = "http://todoist-container:5000"  # To działa w środowisku Docker
+BASE_URL = os.environ.get("TEST_API_URL", DEFAULT_URL)
 
 # Test fixtures
 @pytest.fixture
