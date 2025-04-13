@@ -5,6 +5,7 @@ User schemas for request and response validation.
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, EmailStr, Field, validator
+import re
 
 
 class UserBase(BaseModel):
@@ -46,11 +47,32 @@ class UserResponse(UserBase):
 
 
 class Token(BaseModel):
-    """Schema for authentication token."""
+    """Schema for authentication token response."""
     access_token: str
     token_type: str = "bearer"
+    user: UserResponse
+
+    class Config:
+        """Pydantic configuration."""
+        orm_mode = True
 
 
 class TokenData(BaseModel):
     """Schema for token payload data."""
     user_id: Optional[int] = None
+
+
+class ApiKeyCreate(BaseModel):
+    """Schema for API key creation."""
+    description: Optional[str] = None
+
+
+class ApiKeyResponse(BaseModel):
+    """Schema for API key response."""
+    id: int
+    key_value: str
+    description: Optional[str] = None
+    created_at: datetime
+    
+    class Config:
+        orm_mode = True

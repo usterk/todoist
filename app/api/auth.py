@@ -3,13 +3,15 @@ Authentication endpoints for user registration and login.
 """
 
 from datetime import timedelta
+import secrets
+import string
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.database import get_db
-from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
-from app.auth.auth import authenticate_user, create_access_token, get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.models.user import User, ApiKey
+from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, ApiKeyCreate, ApiKeyResponse
+from app.auth.auth import authenticate_user, create_access_token, get_password_hash, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(
     tags=["authentication"],
@@ -168,6 +170,7 @@ async def login_for_access_token(
     Raises:
         HTTPException: If authentication fails (401 Unauthorized)
     """
+    # Authenticate user
     user = authenticate_user(db, user_credentials.email, user_credentials.password)
     
     if not user:
@@ -177,14 +180,134 @@ async def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
         
+    # Generate access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.id}, 
+        user_id=user.id,  # Używamy user_id bezpośrednio zamiast data={"sub": user.id}
         expires_delta=access_token_expires
     )
     
+    # Return token and user info
     return {
         "access_token": access_token, 
         "token_type": "bearer",
         "user": user
     }
+
+
+@router.post(
+    "/apikey/generate",
+    response_model=ApiKeyResponse,
+    responses={
+        201: {"description": "API key successfully generated"},
+        401: {"description": "Authentication failed"},
+    },
+    status_code=status.HTTP_201_CREATED
+)
+async def generate_api_key(
+    api_key_create: ApiKeyCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> ApiKeyResponse:
+    """
+    Generate a new API key for the authenticated user.
+    
+    This endpoint requires authentication and generates a new API key
+    associated with the authenticated user. The API key can be used
+    for programmatic access to the API without login.
+    
+    Args:
+        api_key_create: Optional API key metadata like description
+        current_user: The authenticated user (from JWT token)
+        db: Database session
+        
+    Returns:
+        ApiKeyResponse: The newly generated API key
+        
+    Raises:
+        HTTPException: If authentication fails (401 Unauthorized)
+    """
+    # Generate a secure random API key
+    alphabet = string.ascii_letters + string.digits
+    key_value = ''.join(secrets.choice(alphabet) for _ in range(32))
+    
+    # Create a new API key record
+    new_api_key = ApiKey(
+        user_id=current_user.id,
+        key_value=key_value,
+        description=api_key_create.description
+    )
+    
+    # Store in database
+    try:
+        db.add(new_api_key)
+        db.commit()
+        db.refresh(new_api_key)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate API key: {str(e)}"
+        )
+    
+    return new_api_key
+
+
+@router.post(
+    "/apikey/revoke/{key_id}",
+    status_code=status.HTTP_200_OK,
+    responses={
+        200: {"description": "API key successfully revoked"},
+        401: {"description": "Authentication failed"},
+        404: {"description": "API key not found"},
+    }
+)
+async def revoke_api_key(
+    key_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Revoke an existing API key.
+    
+    This endpoint allows users to revoke an API key, preventing its
+    further use for authentication.
+    
+    Args:
+        key_id: ID of the API key to revoke
+        current_user: The authenticated user (from JWT token)
+        db: Database session
+        
+    Returns:
+        dict: Success message
+        
+    Raises:
+        HTTPException: 
+            401 Unauthorized - If authentication fails
+            404 Not Found - If the API key does not exist or doesn't belong to the user
+    """
+    # Find the API key belonging to the current user
+    api_key = db.query(ApiKey).filter(
+        ApiKey.id == key_id,
+        ApiKey.user_id == current_user.id
+    ).first()
+    
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="API key not found"
+        )
+    
+    # Revoke the API key
+    api_key.revoked = True
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to revoke API key: {str(e)}"
+        )
+    
+    return {"message": "API key successfully revoked"}

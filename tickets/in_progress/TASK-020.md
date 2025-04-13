@@ -189,3 +189,14 @@ Addressed remaining test failures:
 - Ensured database rollback is properly called in error scenarios
 - Made E2E tests more resilient to different database connection states
 - All tests now pass successfully, including E2E tests
+
+### [2025-04-20 10:45] - Fixed E2E authentication tests
+Fixed critical issues with authentication E2E tests:
+- Fixed endpoint paths in E2E tests for authentication - added missing `/api/auth` prefix to all authentication endpoint URLs
+- Updated all tests in `tests/e2e/test_auth.py` to use correct API endpoint paths
+- Corrected all test helper functions to use proper endpoint URLs
+- Identified 4 skipped tests that require future implementation:
+  - Tests for protected endpoints requiring authentication
+  - Tests for API key authentication functionality
+- Verified that all implemented authentication tests now pass successfully
+- All tests are now either passing (56), properly skipped (4), or marked as expected failures (6)

@@ -126,10 +126,19 @@ else
   echo "✅ Using existing Docker image (no changes in configuration)"
 fi
 
+# Detect if script is running in interactive terminal
+if [ -t 0 ]; then
+  INTERACTIVE_FLAG="-it"
+else
+  # No TTY available
+  INTERACTIVE_FLAG="-i"
+  echo "Wykryto środowisko nieinteraktywne, uruchamiam w trybie non-TTY"
+fi
+
 echo "🚀 Starting container in $COMMAND mode..."
 
 # Prepare the Docker command
-DOCKER_ARGS="-it --name "$CONTAINER_NAME" -v "$APP_DIR:/app" -v "$DATA_DIR:/app/data" -e PYTHONPATH=/app -e DATA_DIRECTORY="/app/data""
+DOCKER_ARGS="$INTERACTIVE_FLAG --name "$CONTAINER_NAME" -v "$APP_DIR:/app" -v "$DATA_DIR:/app/data" -e PYTHONPATH=/app -e DATA_DIRECTORY="/app/data""
 
 # Pass environment variables from .env to container
 if [ -f .env ]; then
@@ -261,7 +270,7 @@ if [[ "$COMMAND" == "e2e-test" || "$COMMAND" == "e2e-tests" ]]; then
   # Remove any existing test containers
   docker rm -f "$E2E_CONTAINER_NAME" 2>/dev/null || true
   
-  E2E_DOCKER_ARGS="-it --name "$E2E_CONTAINER_NAME" --network "$NETWORK_NAME" -v "$APP_DIR:/app" -e PYTHONPATH=/app -e E2E_TESTING=true -e E2E_BASE_URL=http://$CONTAINER_NAME:5000 -e API_CONTAINER_NAME=$CONTAINER_NAME"
+  E2E_DOCKER_ARGS="$INTERACTIVE_FLAG --name "$E2E_CONTAINER_NAME" --network "$NETWORK_NAME" -v "$APP_DIR:/app" -e PYTHONPATH=/app -e E2E_TESTING=true -e E2E_BASE_URL=http://$CONTAINER_NAME:5000 -e API_CONTAINER_NAME=$CONTAINER_NAME"
   
   if [[ $# -gt 1 ]]; then
     # Run specific E2E test files if provided
@@ -273,8 +282,9 @@ if [[ "$COMMAND" == "e2e-test" || "$COMMAND" == "e2e-tests" ]]; then
   
   # Clean up both containers
   echo "🧹 Cleaning up containers..."
-  docker stop "$CONTAINER_NAME" > /dev/null
-  docker rm "$CONTAINER_NAME" "$E2E_CONTAINER_NAME" > /dev/null
+  docker stop "$CONTAINER_NAME" > /dev/null 2>&1 || true
+  docker rm "$CONTAINER_NAME" > /dev/null 2>&1 || true
+  docker rm "$E2E_CONTAINER_NAME" > /dev/null 2>&1 || true
 
 elif [[ "$COMMAND" == "test" ]]; then
   # Run ALL tests (unit, integration, and E2E)
@@ -303,20 +313,23 @@ elif [[ "$COMMAND" == "test" ]]; then
   
   # Run all tests in another container
   echo "🧪 Running all tests..."
-  TEST_DOCKER_ARGS="-it --name "$E2E_CONTAINER_NAME" --network "$NETWORK_NAME" -v "$APP_DIR:/app" -e PYTHONPATH=/app -e E2E_TESTING=true -e E2E_BASE_URL=http://$CONTAINER_NAME:5000"
+  TEST_DOCKER_ARGS="$INTERACTIVE_FLAG --name "$E2E_CONTAINER_NAME" --network "$NETWORK_NAME" -v "$APP_DIR:/app" -e PYTHONPATH=/app -e E2E_TESTING=true -e E2E_BASE_URL=http://$CONTAINER_NAME:5000"
   
   if [[ $# -gt 0 ]]; then
     # Run specific test files if provided
+    echo "🧪 Running tests for specific files: $@"
     docker run $TEST_DOCKER_ARGS "$IMAGE_NAME" test "$@"
   else
     # Run ALL tests
+    echo "🧪 Running tests..."
     docker run $TEST_DOCKER_ARGS "$IMAGE_NAME" test
   fi
   
   # Clean up both containers
   echo "🧹 Cleaning up containers..."
-  docker stop "$CONTAINER_NAME" > /dev/null
-  docker rm "$CONTAINER_NAME" "$E2E_CONTAINER_NAME" > /dev/null
+  docker stop "$CONTAINER_NAME" > /dev/null 2>&1 || true
+  docker rm "$CONTAINER_NAME" > /dev/null 2>&1 || true
+  docker rm "$E2E_CONTAINER_NAME" > /dev/null 2>&1 || true
   
 elif [[ "$COMMAND" == "unit-test" ]]; then
   # Run only unit and integration tests (exclude E2E tests)

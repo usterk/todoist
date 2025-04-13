@@ -152,18 +152,94 @@ Our JWT payload includes:
 
 JWT tokens expire after 30 minutes by default.
 
-## Using API Key Authentication
+## API Key Management
 
-API keys provide an alternative authentication method for integrations:
+API keys provide an alternative authentication method that doesn't expire like JWT tokens. They're useful for integrations, service accounts, or automated scripts.
 
-1. Obtain an API key (endpoint coming soon)
-2. Include the API key in the x-api-key header:
+### Generating an API Key
+
+To generate a new API key:
+
+#### Endpoint
 
 ```
-x-api-key: your-api-key-value
+POST /api/auth/apikey/generate
 ```
 
-**Note:** API key generation is currently only available to authenticated users.
+#### Requirements
+- Must be authenticated with JWT token
+- Optional description can be provided
+
+#### Request Body
+
+```json
+{
+  "description": "Integration for Project X"
+}
+```
+
+#### Response
+
+**Success (201 Created):**
+
+```json
+{
+  "id": 1,
+  "key_value": "j7HgTkOnM2lPqSw5xR8zD9vF3bY6cA1e",
+  "description": "Integration for Project X",
+  "created_at": "2025-04-13T14:30:00"
+}
+```
+
+**Error (401 Unauthorized):**
+
+```json
+{
+  "detail": "Not authenticated"
+}
+```
+
+### Revoking an API Key
+
+If an API key is compromised or no longer needed, it can be revoked:
+
+#### Endpoint
+
+```
+POST /api/auth/apikey/revoke/{key_id}
+```
+
+#### Requirements
+- Must be authenticated with JWT token
+- Can only revoke your own API keys
+
+#### Response
+
+**Success (200 OK):**
+
+```json
+{
+  "message": "API key successfully revoked"
+}
+```
+
+**Error (404 Not Found):**
+
+```json
+{
+  "detail": "API key not found"
+}
+```
+
+### Using API Key Authentication
+
+Include the API key in the x-api-key header:
+
+```
+x-api-key: j7HgTkOnM2lPqSw5xR8zD9vF3bY6cA1e
+```
+
+**Note:** Once revoked, an API key cannot be used for authentication.
 
 ## Authentication Middleware
 
@@ -190,13 +266,15 @@ Each error response includes a detail field explaining the issue.
 - JWT tokens are signed with a secure algorithm (HS256)
 - JWT tokens have a limited expiration time
 - API keys can be revoked if compromised
+- Revoked API keys cannot be reactivated for security reasons
 
 ## Future Enhancements
 
 Planned features for the authentication system:
 
 - Token refresh mechanism
-- API key management endpoints
+- API key listing endpoint
+- More granular API key permissions
 - Role-based access control
 
 For any technical issues or questions regarding authentication, please contact the development team.

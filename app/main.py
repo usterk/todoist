@@ -8,6 +8,7 @@ import uvicorn
 
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
+from app.api.protected import router as protected_router
 from app.database.init_db import init_db
 
 # Configure logging
@@ -39,6 +40,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router, tags=["health"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(protected_router, prefix="/api", tags=["protected"])
 
 @app.on_event("startup")
 async def startup_db_client():

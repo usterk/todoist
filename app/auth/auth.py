@@ -4,6 +4,7 @@ Authentication utilities for JWT tokens and password handling.
 
 from datetime import datetime, timedelta
 from typing import Optional, Union
+import logging
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -15,6 +16,10 @@ from fastapi.security import OAuth2PasswordBearer
 from app.database.database import get_db
 from app.models.user import User
 
+# Configure logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)  # Set to INFO to see important logs
+
 # Security configuration
 SECRET_KEY = "temporarysecretkey"  # Should be replaced with env variable
 ALGORITHM = "HS256"
@@ -24,7 +29,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 password bearer scheme for token extraction
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -88,7 +93,7 @@ def create_access_token(*, data: dict = None, user_id: int = None, expires_delta
         data = {}
     
     if user_id is not None:
-        data.update({"sub": user_id})
+        data.update({"sub": str(user_id)})  # Convert user_id to string for consistent handling
         
     to_encode = data.copy()
     
@@ -100,13 +105,16 @@ def create_access_token(*, data: dict = None, user_id: int = None, expires_delta
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     
+    # Log token creation for debugging
+    logger.debug(f"Generated token for user_id: {user_id} with expiry: {expire}")
+    
     return encoded_jwt
 
 
 async def get_current_user_from_token(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
-) -> User:
+) -> Optional[User]:
     """
     Get the current authenticated user from a JWT token.
     
@@ -115,11 +123,14 @@ async def get_current_user_from_token(
         db: Database session
         
     Returns:
-        User: The authenticated user
+        Optional[User]: The authenticated user or None if no token provided
         
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    if token is None:
+        return None
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -127,20 +138,37 @@ async def get_current_user_from_token(
     )
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        # Log token validation attempt for debugging
+        logger.info(f"Validating token: {token[:10]}...")
         
-        if user_id is None:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        logger.debug(f"Token payload: {payload}")
+        
+        user_id_str = payload.get("sub")
+        
+        if user_id_str is None:
+            logger.warning("Token missing 'sub' claim")
             raise credentials_exception
             
-    except JWTError:
+        # Convert user_id from string to int
+        try:
+            user_id = int(user_id_str)
+            logger.debug(f"Extracted user_id: {user_id}")
+        except ValueError:
+            logger.warning(f"Invalid user_id format: {user_id_str}")
+            raise credentials_exception
+            
+    except JWTError as e:
+        logger.warning(f"JWT validation error: {str(e)}")
         raise credentials_exception
         
     user = db.query(User).filter(User.id == user_id).first()
     
     if user is None:
+        logger.warning(f"No user found for ID: {user_id}")
         raise credentials_exception
         
+    logger.info(f"Authentication successful for user: {user.username}")
     return user
 
 
@@ -162,29 +190,32 @@ async def get_current_user_from_api_key(
         HTTPException: If API key is invalid or revoked
     """
     if not x_api_key:
+        logger.debug("No API key provided")
         return None
     
     try:
-        # We need to import the ApiKey model here to avoid circular imports
-        from sqlalchemy import select
-        from sqlalchemy.orm import Session
-        
         # Look up the API key in the database
+        logger.info(f"Validating API key: {x_api_key[:10]}...")
+        
+        # Use safe query parameters to avoid SQL injection
         stmt = text("SELECT user_id FROM api_keys WHERE key_value = :key AND revoked = 0")
         result = db.execute(stmt, {"key": x_api_key}).first()
         
         if not result:
+            logger.warning(f"Invalid API key: {x_api_key[:10]}...")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid API key",
             )
         
         user_id = result[0]
+        logger.debug(f"API key matches user_id: {user_id}")
         
         # Get the associated user
         user = db.query(User).filter(User.id == user_id).first()
         
         if not user:
+            logger.warning(f"No user found for API key user_id: {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User associated with API key not found",
@@ -197,10 +228,12 @@ async def get_current_user_from_api_key(
         )
         db.commit()
         
+        logger.info(f"API key authentication successful for user: {user.username}")
         return user
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error processing API key: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error processing API key: {str(e)}"
@@ -209,8 +242,9 @@ async def get_current_user_from_api_key(
 
 async def get_current_user(
     request: Request,
-    token_user: Optional[User] = Depends(get_current_user_from_token),
-    api_key_user: Optional[User] = Depends(get_current_user_from_api_key),
+    token: str = Depends(oauth2_scheme),
+    x_api_key: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
 ) -> User:
     """
     Get the authenticated user from either JWT token or API key.
@@ -222,8 +256,9 @@ async def get_current_user(
     
     Args:
         request: The request object
-        token_user: User authenticated via JWT token
-        api_key_user: User authenticated via API key
+        token: JWT token from Authorization header
+        x_api_key: API key from x-api-key header
+        db: Database session
         
     Returns:
         User: The authenticated user
@@ -231,19 +266,77 @@ async def get_current_user(
     Raises:
         HTTPException: If no valid authentication method is provided
     """
-    # Check if we have a user from token or API key
-    if token_user:
-        return token_user
+    user = None
+    token_error = False
     
-    if api_key_user:
-        return api_key_user
+    # Try JWT token first
+    if token:
+        try:
+            # Decode JWT token
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id_str = payload.get("sub")
+            
+            if user_id_str:
+                # Get user by ID
+                user_id = int(user_id_str)
+                user = db.query(User).filter(User.id == user_id).first()
+                
+                if user:
+                    logger.info(f"JWT token authentication successful for user: {user.username}")
+                    return user
+        except Exception as e:
+            logger.warning(f"JWT token validation failed: {str(e)}")
+            token_error = True
+    
+    # Try API key if JWT failed
+    if x_api_key:
+        try:
+            # Look up API key
+            stmt = text("SELECT user_id FROM api_keys WHERE key_value = :key AND revoked = 0")
+            result = db.execute(stmt, {"key": x_api_key}).first()
+            
+            if result:
+                user_id = result[0]
+                user = db.query(User).filter(User.id == user_id).first()
+                
+                if user:
+                    # Update last used timestamp
+                    db.execute(
+                        text("UPDATE api_keys SET last_used = :now WHERE key_value = :key"),
+                        {"now": datetime.utcnow(), "key": x_api_key}
+                    )
+                    db.commit()
+                    
+                    logger.info(f"API key authentication successful for user: {user.username}")
+                    return user
+        except Exception as e:
+            logger.warning(f"API key validation failed: {str(e)}")
     
     # If we get here, neither authentication method was successful
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Authentication required",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    logger.warning("Authentication required but no valid auth method found")
+    
+    # Używamy różnych komunikatów w zależności od tego, co się wydarzyło
+    if token_error:
+        # Jeśli był token, ale był niepoprawny
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    elif token or x_api_key:
+        # Jeśli był token lub klucz API, ale nie znaleziono użytkownika
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    else:
+        # Jeśli w ogóle nie było autoryzacji
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 # Alias for backward compatibility

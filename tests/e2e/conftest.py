@@ -8,6 +8,8 @@ import requests
 import time
 import subprocess
 import logging
+import random
+import string
 from typing import Generator, Optional
 
 logger = logging.getLogger(__name__)
@@ -126,8 +128,61 @@ def api_test_user(api_session, base_url) -> Optional[dict]:
     """
     Create a test user for API testing.
     
-    This is a placeholder - implement actual user creation when needed.
-    Currently only used for tests that require authentication.
+    Creates a user with unique credentials for tests that require authentication.
     """
-    # This will be implemented in future tickets when working on auth tests
-    return None
+    # Use both timestamp and random string to ensure uniqueness
+    timestamp = int(time.time())
+    random_str = ''.join(random.choices(string.ascii_lowercase, k=8))
+    username = f"testuser_{timestamp}_{random_str}"
+    email = f"test_{timestamp}_{random_str}@example.com"
+    password = "TestPassword123"
+    
+    try:
+        # Register the user
+        register_response = api_session.post(
+            f"{base_url}/api/auth/register",
+            json={
+                "username": username,
+                "email": email,
+                "password": password
+            }
+        )
+        
+        # Check if registration was successful
+        if register_response.status_code != 201:
+            logger.warning(f"Failed to create test user: {register_response.text}")
+            return None
+            
+        # Log in to get authentication token
+        login_response = api_session.post(
+            f"{base_url}/api/auth/login",
+            json={
+                "email": email,
+                "password": password
+            }
+        )
+        
+        # Check if login was successful
+        if login_response.status_code != 200:
+            logger.warning(f"Failed to log in with test user: {login_response.text}")
+            return None
+            
+        login_data = login_response.json()
+        token = login_data.get("access_token")
+        
+        if not token:
+            logger.warning("Login response did not contain access token")
+            return None
+            
+        # Return user details including token
+        return {
+            "id": register_response.json().get("id"),
+            "username": username,
+            "email": email,
+            "password": password,
+            "token": token
+        }
+            
+    except Exception as e:
+        logger.exception(f"Error creating test user: {str(e)}")
+        return None
