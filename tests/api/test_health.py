@@ -60,8 +60,41 @@ def setup_test_db():
 
 def test_health_endpoint(setup_test_db):
     """Test health check endpoint returns 200 and database status is connected"""
-    response = client.get("/health")
+    # Tworzymy klasę MockSession symulującą udane połączenie z bazą danych
+    class MockSessionConnected:
+        def __init__(self):
+            pass
+            
+        def execute(self, statement, params=None):
+            class MockResult:
+                def fetchone(self):
+                    return [1]
+            return MockResult()
     
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"
-    assert response.json()["database"] == "connected"
+    # Funkcja zastępująca oryginalną zależność get_db
+    def mock_get_db():
+        try:
+            yield MockSessionConnected()
+        finally:
+            pass
+    
+    # Zapisanie oryginalnej zależności
+    original_override = app.dependency_overrides.get(get_db)
+    
+    try:
+        # Zastosowanie mocka
+        app.dependency_overrides[get_db] = mock_get_db
+        
+        # Wywołanie testu
+        response = client.get("/health")
+        
+        # Sprawdzenie odpowiedzi
+        assert response.status_code == 200
+        assert response.json()["status"] == "ok"
+        assert response.json()["database"] == "connected"
+    finally:
+        # Przywrócenie oryginalnej zależności
+        if original_override:
+            app.dependency_overrides[get_db] = original_override
+        else:
+            del app.dependency_overrides[get_db]

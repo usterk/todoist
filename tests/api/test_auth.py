@@ -205,3 +205,172 @@ def test_login_invalid_credentials(setup_test_db):
     
     assert response.status_code == 401
     assert "Incorrect email or password" in response.json()["detail"]
+
+# New test cases to increase coverage
+
+def test_register_database_error(setup_test_db, monkeypatch):
+    """Test handling of database error during registration"""
+    # Create a mock session that raises an exception during commit
+    class MockSession:
+        def __init__(self):
+            pass
+            
+        def add(self, obj):
+            pass
+            
+        def commit(self):
+            raise Exception("Database error")
+            
+        def rollback(self):
+            pass
+            
+        def query(self, model):
+            class MockQuery:
+                def filter(self, condition):
+                    return self
+                    
+                def first(self):
+                    return None
+            return MockQuery()
+            
+        def execute(self, *args, **kwargs):
+            class MockResult:
+                def first(self):
+                    return None
+            return MockResult()
+    
+    # Replace the database session with the mock
+    def mock_get_db():
+        try:
+            yield MockSession()
+        finally:
+            pass
+    
+    # Store the original override
+    original_override = app.dependency_overrides.get(get_db)
+    
+    try:
+        # Apply the monkey patch
+        app.dependency_overrides[get_db] = mock_get_db
+        
+        # Attempt to register a user
+        response = client.post(
+            "/api/auth/register",
+            json={"username": "testuser", "email": "test@example.com", "password": "TestPassword123"}
+        )
+        
+        # Check the response
+        assert response.status_code == 500
+        assert "Failed to create user" in response.json()["detail"]
+    finally:
+        # Reset the dependency override
+        if original_override:
+            app.dependency_overrides[get_db] = original_override
+        else:
+            del app.dependency_overrides[get_db]
+
+def test_login_user_not_found(setup_test_db):
+    """Test login with non-existent user email"""
+    # Create mock session that simulates non-existent user
+    class MockSession:
+        def __init__(self):
+            pass
+            
+        def query(self, model):
+            class MockQuery:
+                def filter(self, condition):
+                    return self
+                    
+                def first(self):
+                    return None  # Symulujemy brak użytkownika
+            return MockQuery()
+        
+        def execute(self, *args, **kwargs):
+            class MockResult:
+                def first(self):
+                    return None
+            return MockResult()
+    
+    # Replace the database session with the mock
+    def mock_get_db():
+        try:
+            yield MockSession()
+        finally:
+            pass
+    
+    # Store the original override
+    original_override = app.dependency_overrides.get(get_db)
+    
+    try:
+        # Apply the mock
+        app.dependency_overrides[get_db] = mock_get_db
+        
+        # Try to login with non-existent email
+        response = client.post(
+            "/api/auth/login",
+            json={"email": "nonexistent@example.com", "password": "TestPassword123"}
+        )
+        
+        # Check the response
+        assert response.status_code == 401
+        assert "Incorrect email or password" in response.json()["detail"]
+    finally:
+        # Reset the dependency override
+        if original_override:
+            app.dependency_overrides[get_db] = original_override
+        else:
+            del app.dependency_overrides[get_db]
+
+def test_register_malformed_request(setup_test_db):
+    """Test registration with malformed request (missing required fields)"""
+    # Missing email
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "testuser", "password": "TestPassword123"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("email" in item["loc"] for item in error_detail)
+    
+    # Missing username
+    response = client.post(
+        "/api/auth/register",
+        json={"email": "test@example.com", "password": "TestPassword123"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("username" in item["loc"] for item in error_detail)
+    
+    # Missing password
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "testuser", "email": "test@example.com"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in item["loc"] for item in error_detail)
+
+def test_login_malformed_request(setup_test_db):
+    """Test login with malformed request (missing required fields)"""
+    # Missing email
+    response = client.post(
+        "/api/auth/login",
+        json={"password": "TestPassword123"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("email" in item["loc"] for item in error_detail)
+    
+    # Missing password
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "test@example.com"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in item["loc"] for item in error_detail)
