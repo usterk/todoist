@@ -1,140 +1,140 @@
 # Todoist API
 
-Aplikacja do zarządzania zadaniami zbudowana przy użyciu FastAPI i SQLite.
+Task management application built with FastAPI and SQLite.
 
 [![Codecov](https://codecov.io/gh/usterk/todoist/branch/master/graph/badge.svg)](https://codecov.io/gh/usterk/todoist)
 
-## Struktura projektu
+## Project Structure
 
 ```
 todoist/
-├── app/                     # Kod źródłowy aplikacji
-│   ├── api/                 # Moduł z endpointami API
-│   ├── auth/                # Moduł uwierzytelniania
-│   ├── core/                # Konfiguracja i funkcje pomocnicze
-│   ├── database/            # Obsługa i konfiguracja bazy danych
-│   ├── models/              # Modele ORM SQLAlchemy
-│   └── schemas/             # Schematy Pydantic do walidacji danych
-├── data/                    # Katalog przechowujący bazę danych SQLite
-├── docs/                    # Dokumentacja projektu
-├── tests/                   # Testy jednostkowe i integracyjne
-├── Dockerfile               # Konfiguracja konteneryzacji
-├── requirements.txt         # Zależności Python
-├── entrypoint.sh            # Skrypt wejściowy dla kontenera
-└── run.sh                   # Skrypt do uruchamiania aplikacji w Dockerze
+├── app/                     # Application source code
+│   ├── api/                 # API endpoints module
+│   ├── auth/                # Authentication module
+│   ├── core/                # Configuration and helper functions
+│   ├── database/            # Database configuration and handling
+│   ├── models/              # SQLAlchemy ORM models
+│   └── schemas/             # Pydantic schemas for data validation
+├── data/                    # Directory storing SQLite database
+├── docs/                    # Project documentation
+├── tests/                   # Unit and integration tests
+├── Dockerfile               # Containerization configuration
+├── requirements.txt         # Python dependencies
+├── entrypoint.sh            # Entry script for the container
+└── run.sh                   # Script to run the application in Docker
 ```
 
-## Wymagania
+## Requirements
 
 - Python 3.9+
 - Docker
-- Dostęp do internetu do pobrania zależności
+- Internet access to download dependencies
 
-## Uruchomienie aplikacji
+## Running the application
 
-### Przy użyciu Dockera
+### Using Docker
 
-Aplikację można uruchomić przy użyciu skryptu `run.sh`, który automatycznie buduje obraz Docker i uruchamia kontener:
+You can run the application using the `run.sh` script, which automatically builds the Docker image and runs the container:
 
 ```bash
-# Nadaj uprawnienia wykonywania skryptowi (tylko raz)
+# Grant execute permissions to the script (only once)
 chmod +x run.sh
 
-# Uruchom aplikację z domyślną nazwą
+# Run the application with the default name
 ./run.sh
 
-# Lub podaj własną nazwę aplikacji
-./run.sh app moja-aplikacja
+# Or provide your own application name
+./run.sh app my-application
 ```
 
-Skrypt automatycznie:
-1. Wykryje zmiany w plikach Dockerfile, requirements.txt lub entrypoint.sh i przebuduje obraz w razie potrzeby
-2. Zatrzyma i usunie istniejący kontener z tą samą nazwą
-3. Utworzy katalog dla danych, jeśli nie istnieje
-4. Uruchomi kontener z odpowiednimi mountami dla kodu i danych
+The script automatically:
+1. Detects changes in Dockerfile, requirements.txt, or entrypoint.sh and rebuilds the image if necessary
+2. Stops and removes the existing container with the same name
+3. Creates a directory for data if it does not exist
+4. Runs the container with appropriate mounts for code and data
 
-### Uruchamianie testów w kontenerze
+### Running tests in the container
 
-Możesz uruchomić testy w kontenerze Docker za pomocą komendy:
+You can run tests in the Docker container using the command:
 
 ```bash
-# Uruchom wszystkie testy
+# Run all tests
 ./run.sh test
 
-# Uruchom testy z podaną nazwą aplikacji
-./run.sh test moja-aplikacja
+# Run tests with the given application name
+./run.sh test my-application
 
-# Uruchom określone testy lub z dodatkowymi parametrami
-./run.sh test moja-aplikacja tests/api/
-./run.sh test moja-aplikacja -v tests/api/test_health.py
+# Run specific tests or with additional parameters
+./run.sh test my-application tests/api/
+./run.sh test my-application -v tests/api/test_health.py
 ```
 
-### Dostęp do powłoki w kontenerze
+### Accessing the shell in the container
 
-Aby uzyskać dostęp do powłoki bash wewnątrz kontenera:
+To access the bash shell inside the container:
 
 ```bash
-./run.sh shell moja-aplikacja
+./run.sh shell my-application
 ```
 
-### Pomoc
+### Help
 
-Aby wyświetlić pomoc dotyczącą używania skryptu run.sh:
+To display help for using the run.sh script:
 
 ```bash
 ./run.sh help
 ```
 
-### Bez Dockera
+### Without Docker
 
-Jeśli wolisz uruchomić aplikację bezpośrednio:
+If you prefer to run the application directly:
 
 ```bash
-# Utwórz i aktywuj wirtualne środowisko (opcjonalnie)
+# Create and activate a virtual environment (optional)
 python -m venv venv
-source venv/bin/activate  # W systemie Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Zainstaluj zależności
+# Install dependencies
 pip install -r requirements.txt
 
-# Uruchom serwer rozwojowy
+# Run the development server
 uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload
 
-# Uruchom testy
+# Run tests
 pytest
 ```
 
-## Dostęp do API
+## Accessing the API
 
-Po uruchomieniu, API jest dostępne pod adresem:
+Once running, the API is available at:
 - http://localhost:5000/
 
-Dokumentacja Swagger UI:
+Swagger UI documentation:
 - http://localhost:5000/docs
 
-Dokumentacja ReDoc:
+ReDoc documentation:
 - http://localhost:5000/redoc
 
-## Dostęp do bazy danych
+## Accessing the database
 
-Aplikacja używa SQLite jako bazy danych, z plikiem znajdującym się w katalogu `data/`.
-W kontenerze baza danych jest montowana jako wolumin, więc dane są zachowywane pomiędzy uruchomieniami.
+The application uses SQLite as the database, with the file located in the `data/` directory.
+In the container, the database is mounted as a volume, so data is preserved between runs.
 
-## Endpointy API
+## API Endpoints
 
-### Zdrowotność aplikacji
+### Application Health
 
 ```
 GET /health
 ```
 
-Sprawdza status API i połączenie z bazą danych.
+Checks the status of the API and database connection.
 
-### Autoryzacja
+### Authorization
 
 ```
 POST /api/auth/register
 POST /api/auth/login
 ```
 
-Służą do rejestracji nowego użytkownika i logowania.
+Used for registering a new user and logging in.
