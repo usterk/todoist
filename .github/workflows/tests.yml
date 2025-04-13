@@ -10,10 +10,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     
-    # Removed PostgreSQL service as SQLite is used for tests
-    
     steps:
-    - uses: actions/checkout@v3
+    - name: Check out repository
+      uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -26,25 +25,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Verify if run.sh can be used
-      run: |
-        if [ -f run.sh ]; then
-          chmod +x run.sh
-          echo "Script run.sh exists and is now executable"
-        else
-          echo "Script run.sh not found, will use alternative approach"
-        fi
+    - name: Run tests
+      run: python -m pytest -v
     
-    - name: Run tests with run.sh (if applicable)
+    - name: Generate coverage report
       run: |
-        if [ -f run.sh ] && grep -q "test" run.sh; then
-          ./run.sh test
-        else
-          echo "Skipping this step, will use direct pytest command"
-        fi
-      continue-on-error: true
+        pip install pytest-cov
+        python -m pytest --cov=app --cov-report=xml
     
-    - name: Run tests with pytest directly
-      run: |
-        # Fall back to direct pytest command if run.sh failed or doesn't exist
-        python -m pytest tests/ -v
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
