@@ -42,6 +42,9 @@ Detailed description of the task to be completed...
 - [ ] Task 2
   - [ ] Subtask 2.1
 - [ ] Write tests
+  - [ ] Unit tests for components
+  - [ ] Integration tests where applicable
+  - [ ] E2E tests for critical user flows
 - [ ] Update documentation
 - [ ] Update project changelog
 
@@ -56,7 +59,7 @@ Detailed description of the task to be completed...
 2. Fill in the template with the appropriate information
 3. Default status: `backlog`
 4. Default assignment: `copilot`
-5. Ensure every task includes required final subtasks: writing tests, updating documentation, and updating changelog
+5. Ensure every task includes required final subtasks: writing tests (unit, integration, and E2E), updating documentation, and updating changelog
 
 ### 2. Starting work on a task
 
@@ -94,6 +97,21 @@ Detailed description of the task to be completed...
 1. Add a final entry in the `Changelog` section summarizing the work done
 2. Change the status in the file to `done`
 3. Move the file to the `done/` directory
+
+## Testing Requirements
+
+### 1. Unit Testing
+All features must include unit tests for individual components, functions, and modules.
+
+### 2. Integration Testing
+Where components interact, integration tests must verify their cooperation works correctly.
+
+### 3. End-to-End Testing
+Critical user flows should have E2E tests that verify the complete functionality from a user's perspective, including:
+- Authentication flows
+- Core business operations
+- Important multi-step processes
+- API endpoint behavior in real-world scenarios
 
 ## Interaction with GitHub Copilot
 

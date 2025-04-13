@@ -70,7 +70,7 @@ def test_register_user(setup_test_db):
     """Test user registration endpoint"""
     response = client.post(
         "/api/auth/register",
-        json={"username": "testuser", "email": "test@example.com", "password": "testpassword"}
+        json={"username": "testuser", "email": "test@example.com", "password": "TestPassword123"}
     )
     
     assert response.status_code == 201
@@ -86,13 +86,13 @@ def test_register_duplicate_email(setup_test_db):
     # Register first user
     client.post(
         "/api/auth/register",
-        json={"username": "testuser1", "email": "test@example.com", "password": "testpassword"}
+        json={"username": "testuser1", "email": "test@example.com", "password": "TestPassword123"}
     )
     
     # Try to register with same email
     response = client.post(
         "/api/auth/register",
-        json={"username": "testuser2", "email": "test@example.com", "password": "testpassword"}
+        json={"username": "testuser2", "email": "test@example.com", "password": "TestPassword123"}
     )
     
     assert response.status_code == 400
@@ -104,17 +104,69 @@ def test_register_duplicate_username(setup_test_db):
     # Register first user
     client.post(
         "/api/auth/register",
-        json={"username": "testuser", "email": "test1@example.com", "password": "testpassword"}
+        json={"username": "testuser", "email": "test1@example.com", "password": "TestPassword123"}
     )
     
     # Try to register with same username
     response = client.post(
         "/api/auth/register",
-        json={"username": "testuser", "email": "test2@example.com", "password": "testpassword"}
+        json={"username": "testuser", "email": "test2@example.com", "password": "TestPassword123"}
     )
     
     assert response.status_code == 400
     assert "Username already taken" in response.json()["detail"]
+
+
+def test_register_password_too_short(setup_test_db):
+    """Test registration fails with password that's too short"""
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "testuser", "email": "test@example.com", "password": "Short1"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in item["loc"] and "at least" in item["msg"] 
+               for item in error_detail)
+
+
+def test_register_password_no_digits(setup_test_db):
+    """Test registration fails with password without digits"""
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "testuser", "email": "test@example.com", "password": "NoDigitsHere"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in item["loc"] and "digit" in item["msg"] 
+               for item in error_detail)
+
+
+def test_register_password_no_uppercase(setup_test_db):
+    """Test registration fails with password without uppercase letters"""
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "testuser", "email": "test@example.com", "password": "nouppercase123"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in item["loc"] and "uppercase" in item["msg"] 
+               for item in error_detail)
+
+
+def test_register_password_no_lowercase(setup_test_db):
+    """Test registration fails with password without lowercase letters"""
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "testuser", "email": "test@example.com", "password": "NOLOWERCASE123"}
+    )
+    
+    assert response.status_code == 422
+    error_detail = response.json()["detail"]
+    assert any("password" in item["loc"] and "lowercase" in item["msg"] 
+               for item in error_detail)
 
 
 def test_login_success(setup_test_db):
@@ -122,13 +174,13 @@ def test_login_success(setup_test_db):
     # Register a user
     client.post(
         "/api/auth/register",
-        json={"username": "testuser", "email": "test@example.com", "password": "testpassword"}
+        json={"username": "testuser", "email": "test@example.com", "password": "TestPassword123"}
     )
     
     # Login
     response = client.post(
         "/api/auth/login",
-        json={"email": "test@example.com", "password": "testpassword"}
+        json={"email": "test@example.com", "password": "TestPassword123"}
     )
     
     assert response.status_code == 200
@@ -142,7 +194,7 @@ def test_login_invalid_credentials(setup_test_db):
     # Register a user
     client.post(
         "/api/auth/register",
-        json={"username": "testuser", "email": "test@example.com", "password": "testpassword"}
+        json={"username": "testuser", "email": "test@example.com", "password": "TestPassword123"}
     )
     
     # Try to login with wrong password

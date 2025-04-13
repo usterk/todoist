@@ -14,7 +14,7 @@ Include docstrings for all modules, classes, and functions.
 Organize imports in three groups: standard library, third-party, local application.
 
 ## Testing
-Use pytest as the primary testing framework.
+Use pytest as the primary testing framework. (./run.sh test)
 Write unit tests for all business logic.
 Include integration tests for API endpoints.
 Aim for at least 80% code coverage.
