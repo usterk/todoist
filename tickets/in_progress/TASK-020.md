@@ -64,7 +64,7 @@ The first test implementation will be for the `/health` endpoint as a proof of c
   - [x] Update conftest.py to handle containerized tests
   - [x] Add e2e-test command to run.sh for better testing flow
   - [x] Ensure Docker networking works properly for tests
-- [ ] Test successful execution of E2E tests
+- [x] Test successful execution of E2E tests
 - [ ] Implement E2E test suites for authentication flows
   - [ ] User registration
   - [ ] User login
