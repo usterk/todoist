@@ -24,7 +24,7 @@ The application should be configured to run in a Docker container with the follo
    - Mount the application directory and data directory as volumes
 
 2. **Docker Configuration:**
-   - Base on Python 3.9-slim image
+   - Based on Python 3.9-slim image
    - Install dependencies from requirements.txt
    - Expose port 5000
    - Set appropriate environment variables
