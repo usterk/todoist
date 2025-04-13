@@ -7,6 +7,7 @@ Create Date: 2025-04-13
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.sql import func
 
 
 # revision identifiers, used by Alembic.
@@ -24,7 +25,7 @@ def upgrade():
         sa.Column('username', sa.String(), nullable=False),
         sa.Column('email', sa.String(), nullable=False),
         sa.Column('password_hash', sa.String(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=func.now()),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('username'),
         sa.UniqueConstraint('email')
