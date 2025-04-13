@@ -7,13 +7,13 @@ from typing import Optional, Union
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request, Header
 from fastapi.security import OAuth2PasswordBearer
 
 from app.database.database import get_db
 from app.models.user import User
-from app.schemas.user import TokenData
 
 # Security configuration
 SECRET_KEY = "temporarysecretkey"  # Should be replaced with env variable
@@ -72,17 +72,24 @@ def authenticate_user(db: Session, email: str, password: str) -> Union[User, boo
     return user
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(*, data: dict = None, user_id: int = None, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a JWT access token.
     
     Args:
         data: Data to encode in the token
+        user_id: User ID to encode in the token (alternative to data)
         expires_delta: Optional expiration time override
         
     Returns:
         str: Encoded JWT token
     """
+    if data is None:
+        data = {}
+    
+    if user_id is not None:
+        data.update({"sub": user_id})
+        
     to_encode = data.copy()
     
     if expires_delta:
@@ -96,7 +103,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-async def get_current_user(
+async def get_current_user_from_token(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:
@@ -126,13 +133,118 @@ async def get_current_user(
         if user_id is None:
             raise credentials_exception
             
-        token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception
         
-    user = db.query(User).filter(User.id == token_data.user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
     
     if user is None:
         raise credentials_exception
         
     return user
+
+
+async def get_current_user_from_api_key(
+    x_api_key: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Get the current authenticated user from an API key.
+    
+    Args:
+        x_api_key: API key from the x-api-key header
+        db: Database session
+        
+    Returns:
+        Optional[User]: The authenticated user or None if no API key provided
+        
+    Raises:
+        HTTPException: If API key is invalid or revoked
+    """
+    if not x_api_key:
+        return None
+    
+    try:
+        # We need to import the ApiKey model here to avoid circular imports
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+        
+        # Look up the API key in the database
+        stmt = text("SELECT user_id FROM api_keys WHERE key_value = :key AND revoked = 0")
+        result = db.execute(stmt, {"key": x_api_key}).first()
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key",
+            )
+        
+        user_id = result[0]
+        
+        # Get the associated user
+        user = db.query(User).filter(User.id == user_id).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User associated with API key not found",
+            )
+        
+        # Update the last_used timestamp
+        db.execute(
+            text("UPDATE api_keys SET last_used = :now WHERE key_value = :key"),
+            {"now": datetime.utcnow(), "key": x_api_key}
+        )
+        db.commit()
+        
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing API key: {str(e)}"
+        )
+
+
+async def get_current_user(
+    request: Request,
+    token_user: Optional[User] = Depends(get_current_user_from_token),
+    api_key_user: Optional[User] = Depends(get_current_user_from_api_key),
+) -> User:
+    """
+    Get the authenticated user from either JWT token or API key.
+    This function serves as a unified authentication middleware.
+    
+    Priority:
+    1. JWT token (if valid)
+    2. API key (if valid)
+    
+    Args:
+        request: The request object
+        token_user: User authenticated via JWT token
+        api_key_user: User authenticated via API key
+        
+    Returns:
+        User: The authenticated user
+        
+    Raises:
+        HTTPException: If no valid authentication method is provided
+    """
+    # Check if we have a user from token or API key
+    if token_user:
+        return token_user
+    
+    if api_key_user:
+        return api_key_user
+    
+    # If we get here, neither authentication method was successful
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+# Alias for backward compatibility
+get_current_user_from_jwt = get_current_user_from_token
