@@ -108,6 +108,7 @@ def test_verify_password():
     assert init_db_verify_password("wrongpassword", hashed) == False
 
 
+@pytest.mark.asyncio
 @patch('app.database.init_db.run_migrations')
 @patch('app.database.init_db.Session')
 @patch('app.database.init_db.check_admin_default_password')
@@ -136,6 +137,7 @@ async def test_init_db_successful(mock_check_admin, mock_session, mock_run_migra
     mock_db.close.assert_called_once()
 
 
+@pytest.mark.asyncio
 @patch('app.database.init_db.run_migrations')
 @patch('app.database.init_db.Session')
 @patch('app.database.init_db.check_admin_default_password')
@@ -170,6 +172,7 @@ async def test_init_db_admin_exists(mock_logger, mock_check_admin, mock_session,
     mock_db.close.assert_called_once()
 
 
+@pytest.mark.asyncio
 @patch('app.database.init_db.run_migrations')
 @patch('app.database.init_db.Session')
 @patch('app.database.init_db.logger')
