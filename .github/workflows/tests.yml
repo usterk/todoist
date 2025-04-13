@@ -27,19 +27,20 @@ jobs:
         pip install pytest pytest-cov
     
     - name: Run tests
-      run: python -m pytest -v
+      run: |
+        python -m pytest -v
+      env:
+        PYTHONPATH: ${{ github.workspace }}
     
     - name: Generate coverage report
       run: |
         pytest --cov --cov-branch --cov-report=xml
+      env:
+        PYTHONPATH: ${{ github.workspace }}
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
+        files: ./coverage.xml
         fail_ci_if_error: false
