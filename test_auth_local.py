@@ -17,12 +17,24 @@ from typing import Dict, Any, Tuple
 
 # Configuration based on environment:
 # - W lokalnym środowisku Docker: domyślnie todoist-container:5000
-# - W GitHub Actions: ustawiane przez zmienną TEST_API_URL=http://localhost:8000
-# Użytkownik może nadpisać tę konfigurację ustawiając zmienną środowiskową TEST_API_URL
-DEFAULT_URL = "http://todoist-container:5000"  # Przywrócenie oryginalnej wartości dla lokalnego środowiska
+# - W GitHub Actions: automatycznie wykrywa CI i używa localhost:8000 albo podanego TEST_API_URL
+# - W innym środowisku: można nadpisać ustawiając zmienną środowiskową TEST_API_URL
+
+# Sprawdzenie czy uruchamiamy w GitHub Actions lub innym środowisku CI
+def is_running_in_ci() -> bool:
+    """Check if we're running in a CI environment."""
+    return os.environ.get('CI') == 'true' or os.environ.get('GITHUB_ACTIONS') == 'true'
+
+# Ustaw domyślny URL bazując na środowisku
+if is_running_in_ci():
+    DEFAULT_URL = "http://localhost:8000"  # Domyślny URL dla GitHub Actions
+else:
+    DEFAULT_URL = "http://todoist-container:5000"  # Domyślny URL dla lokalnego środowiska
 
 # Użyj zmiennej środowiskowej jeśli dostępna, w przeciwnym razie użyj domyślnej wartości
 BASE_URL = os.environ.get("TEST_API_URL", DEFAULT_URL)
+
+print(f"Using API URL: {BASE_URL}")  # Log the URL being used for debugging
 
 # Test fixtures
 @pytest.fixture
