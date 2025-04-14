@@ -202,116 +202,97 @@ async def login_for_access_token(
 @router.post(
     "/apikey/generate",
     response_model=ApiKeyResponse,
+    summary="Generate API Key",
+    description="Generate a new API key for the authenticated user. This key can be used for API authentication.",
+    status_code=status.HTTP_201_CREATED,
     responses={
-        201: {"description": "API key successfully generated"},
-        401: {"description": "Authentication failed"},
-    },
-    status_code=status.HTTP_201_CREATED
+        201: {
+            "description": "API key generated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "key_value": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+                        "description": "Integration for Project X",
+                        "created_at": "2023-11-28T12:34:56.789012"
+                    }
+                }
+            }
+        },
+        401: {"description": "Unauthorized - Authentication required"},
+        404: {"description": "User not found"}
+    }
 )
-async def generate_api_key(
-    api_key_create: ApiKeyCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+async def create_api_key(
+    api_key: ApiKeyResponse = Depends(generate_api_key)
 ) -> ApiKeyResponse:
     """
     Generate a new API key for the authenticated user.
     
-    This endpoint requires authentication and generates a new API key
-    associated with the authenticated user. The API key can be used
-    for programmatic access to the API without login.
+    - This endpoint requires authentication with a JWT token.
+    - The generated API key can be used to authenticate API requests.
+    - The API key does not expire unless revoked.
+    - Optional description can be provided to identify the API key's purpose.
     
-    Args:
-        api_key_create: Optional API key metadata like description
-        current_user: The authenticated user (from JWT token)
-        db: Database session
-        
     Returns:
-        ApiKeyResponse: The newly generated API key
-        
-    Raises:
-        HTTPException: If authentication fails (401 Unauthorized)
+        ApiKeyResponse: The created API key with its unique value
     """
-    # Generate a secure random API key
-    alphabet = string.ascii_letters + string.digits
-    key_value = ''.join(secrets.choice(alphabet) for _ in range(32))
-    
-    # Create a new API key record
-    new_api_key = ApiKey(
-        user_id=current_user.id,
-        key_value=key_value,
-        description=api_key_create.description
-    )
-    
-    # Store in database
-    try:
-        db.add(new_api_key)
-        db.commit()
-        db.refresh(new_api_key)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate API key: {str(e)}"
-        )
-    
-    return new_api_key
+    return api_key
 
 
 @router.post(
     "/apikey/revoke/{key_id}",
+    summary="Revoke API Key",
+    description="Revoke an existing API key. Once revoked, the key cannot be used for authentication.",
     status_code=status.HTTP_200_OK,
     responses={
         200: {"description": "API key successfully revoked"},
-        401: {"description": "Authentication failed"},
-        404: {"description": "API key not found"},
+        401: {"description": "Unauthorized - Authentication required"},
+        403: {"description": "Forbidden - You can only revoke your own API keys"},
+        404: {"description": "API key not found"}
     }
 )
 async def revoke_api_key(
     key_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    user_id: int = Depends(get_current_user)
 ) -> dict:
     """
     Revoke an existing API key.
     
-    This endpoint allows users to revoke an API key, preventing its
-    further use for authentication.
-    
     Args:
         key_id: ID of the API key to revoke
-        current_user: The authenticated user (from JWT token)
         db: Database session
+        user_id: ID of the authenticated user
         
     Returns:
-        dict: Success message
+        dict: Message confirming successful revocation
         
     Raises:
-        HTTPException: 
-            401 Unauthorized - If authentication fails
-            404 Not Found - If the API key does not exist or doesn't belong to the user
+        HTTPException: If API key not found or belongs to another user
     """
-    # Find the API key belonging to the current user
-    api_key = db.query(ApiKey).filter(
-        ApiKey.id == key_id,
-        ApiKey.user_id == current_user.id
-    ).first()
+    # Find the API key in the database
+    api_key = db.query(ApiKey).filter(ApiKey.id == key_id).first()
     
     if not api_key:
+        logging.warning(f"API key not found: {key_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="API key not found"
         )
     
+    # Verify the API key belongs to the authenticated user
+    if api_key.user_id != user_id:
+        logging.warning(f"Unauthorized attempt to revoke API key: {key_id} by user: {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only revoke your own API keys"
+        )
+    
     # Revoke the API key
     api_key.revoked = True
+    db.commit()
     
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to revoke API key: {str(e)}"
-        )
+    logging.info(f"API key revoked: {key_id} by user: {user_id}")
     
     return {"message": "API key successfully revoked"}
