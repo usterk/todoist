@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from fastapi import Depends
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from unittest.mock import patch, MagicMock
 
 from app.main import app
 from app.database.database import Base, get_db
@@ -469,3 +470,64 @@ def test_delete_user_not_found(auth_token):
     )
     
     assert response.status_code in (401, 404)
+
+def test_update_user_database_error(test_user, auth_token, monkeypatch):
+    """Test handling database error during user update."""
+    user_id = test_user["id"]
+    
+    update_data = {
+        "username": "error_username",
+        "email": "error_email@example.com"
+    }
+    
+    # Symulacja błędu w metodzie commit w sesji bazy danych
+    def mock_commit_error(*args, **kwargs):
+        raise Exception("Database commit error")
+    
+    # Wykorzystujemy monkeypatch do symulacji błędu bazy danych
+    with patch("sqlalchemy.orm.session.Session.commit", side_effect=mock_commit_error):
+        response = client.put(
+            f"/api/users/{user_id}",
+            headers={"Authorization": f"Bearer {auth_token}"},
+            json=update_data
+        )
+    
+    # Sprawdzamy, czy API zwraca kod 500 i odpowiedni komunikat błędu
+    assert response.status_code == 500
+    assert "Failed to update user" in response.json()["detail"]
+
+def test_delete_user_database_error(test_user, auth_token, monkeypatch):
+    """Test handling database error during user deletion."""
+    user_id = test_user["id"]
+    
+    # Przygotowujemy odrębnego użytkownika do usunięcia
+    delete_user = User(
+        username=f"delete_db_error_user_{uuid.uuid4().hex[:8]}",
+        email=f"delete_error_{uuid.uuid4().hex[:8]}@example.com",
+        password_hash=get_password_hash("DeleteMe123")
+    )
+    
+    # Dodajemy użytkownika do bazy danych
+    db = next(override_get_db())
+    db.add(delete_user)
+    db.commit()
+    db.refresh(delete_user)
+    delete_user_id = delete_user.id
+    
+    # Tworzymy token specjalnie dla tego użytkownika, aby umożliwić jego usunięcie
+    delete_token = create_test_token(user_id=delete_user_id)
+    
+    # Symulacja błędu w metodzie commit w sesji bazy danych
+    def mock_commit_error(*args, **kwargs):
+        raise Exception("Database commit error")
+    
+    # Wykorzystujemy monkeypatch do symulacji błędu bazy danych
+    with patch("sqlalchemy.orm.session.Session.commit", side_effect=mock_commit_error):
+        response = client.delete(
+            f"/api/users/{delete_user_id}",
+            headers={"Authorization": f"Bearer {delete_token}"}
+        )
+    
+    # Sprawdzamy, czy API zwraca kod 500 i odpowiedni komunikat błędu
+    assert response.status_code == 500
+    assert "Failed to delete user" in response.json()["detail"]
