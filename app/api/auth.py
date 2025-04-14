@@ -2,7 +2,7 @@
 Authentication endpoints for user registration and login.
 """
 
-from datetime import timedelta
+from datetime import timedelta, datetime  # Added datetime import
 import secrets
 import string
 import logging  # Dodany import loggera
@@ -200,7 +200,7 @@ async def login_for_access_token(
 
 
 @router.post(
-    "/apikey/generate",
+    "/apikey/generate", 
     response_model=ApiKeyResponse,
     summary="Generate API Key",
     description="Generate a new API key for the authenticated user. This key can be used for API authentication.",
@@ -224,7 +224,9 @@ async def login_for_access_token(
     }
 )
 async def create_api_key(
-    api_key: ApiKeyResponse = Depends(generate_api_key)
+    api_key_data: ApiKeyCreate = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ) -> ApiKeyResponse:
     """
     Generate a new API key for the authenticated user.
@@ -234,10 +236,65 @@ async def create_api_key(
     - The API key does not expire unless revoked.
     - Optional description can be provided to identify the API key's purpose.
     
+    Args:
+        api_key_data: Optional API key creation data with description
+        db: Database session
+        current_user: The authenticated user
+    
     Returns:
         ApiKeyResponse: The created API key with its unique value
     """
-    return api_key
+    user_id = current_user.id if isinstance(current_user, User) else current_user
+    
+    logging.info(f"Generating API key for user ID: {user_id}")
+    
+    # Verify user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        logging.warning(f"User not found: {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Generate a secure random API key
+    key_chars = string.ascii_letters + string.digits
+    key_value = ''.join(secrets.choice(key_chars) for _ in range(32))
+    
+    # Create API key in database
+    description = None
+    if api_key_data:
+        description = api_key_data.description
+        
+    api_key = ApiKey(
+        user_id=user_id,
+        key_value=key_value,
+        description=description,
+        last_used=None,
+        created_at=datetime.utcnow(),
+        revoked=False
+    )
+    
+    try:
+        db.add(api_key)
+        db.commit()
+        db.refresh(api_key)
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Failed to generate API key: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate API key: {str(e)}"
+        )
+    
+    logging.info(f"API key generated successfully for user ID: {user_id}")
+    
+    return ApiKeyResponse(
+        id=api_key.id,
+        key_value=api_key.key_value,
+        description=api_key.description,
+        created_at=api_key.created_at
+    )
 
 
 @router.post(
@@ -255,7 +312,7 @@ async def create_api_key(
 async def revoke_api_key(
     key_id: int,
     db: Session = Depends(get_db),
-    user_id: int = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ) -> dict:
     """
     Revoke an existing API key.
@@ -263,7 +320,7 @@ async def revoke_api_key(
     Args:
         key_id: ID of the API key to revoke
         db: Database session
-        user_id: ID of the authenticated user
+        current_user: The authenticated user
         
     Returns:
         dict: Message confirming successful revocation
@@ -271,6 +328,9 @@ async def revoke_api_key(
     Raises:
         HTTPException: If API key not found or belongs to another user
     """
+    # Determine user_id from current_user
+    user_id = current_user.id if isinstance(current_user, User) else current_user
+    
     # Find the API key in the database
     api_key = db.query(ApiKey).filter(ApiKey.id == key_id).first()
     
@@ -291,7 +351,16 @@ async def revoke_api_key(
     
     # Revoke the API key
     api_key.revoked = True
-    db.commit()
+    
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        logging.error(f"Failed to revoke API key: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to revoke API key: {str(e)}"
+        )
     
     logging.info(f"API key revoked: {key_id} by user: {user_id}")
     

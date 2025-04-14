@@ -1,11 +1,12 @@
 import pytest
 from unittest import mock
-from datetime import datetime, timedelta
-from fastapi import HTTPException, Request
-from sqlalchemy.orm import Session
+from fastapi import Request, HTTPException
 
+from app.models.user import User, ApiKey
+from app.database.database import get_db  # Fixed import path
 from app.api.dependencies import get_current_user_from_api_key
-from app.models.user import ApiKey, User
+from datetime import datetime, timedelta
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
@@ -32,10 +33,10 @@ def valid_api_key(test_user):
     return ApiKey(
         id=1,
         user_id=test_user.id,
-        key_value="valid_api_key_12345",
+        key_value="test-api-key-123",
         description="Test API Key",
-        last_used=datetime.utcnow() - timedelta(days=1),
-        created_at=datetime.utcnow() - timedelta(days=30),
+        last_used=None,
+        created_at="2023-11-28T12:34:56.789012",
         revoked=False
     )
 
@@ -46,10 +47,10 @@ def revoked_api_key(test_user):
     return ApiKey(
         id=2,
         user_id=test_user.id,
-        key_value="revoked_api_key_12345",
+        key_value="revoked-api-key",
         description="Revoked API Key",
-        last_used=datetime.utcnow() - timedelta(days=1),
-        created_at=datetime.utcnow() - timedelta(days=30),
+        last_used=None,
+        created_at="2023-11-28T12:34:56.789012",
         revoked=True
     )
 
@@ -73,6 +74,7 @@ def test_get_current_user_from_api_key_valid(mock_db, mock_request, test_user, v
     # Assert
     assert result.id == test_user.id
     assert result.username == test_user.username
+    assert result.email == test_user.email
     
     # Verify the key's last_used was updated
     mock_db.commit.assert_called_once()

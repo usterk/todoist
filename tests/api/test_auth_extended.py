@@ -235,6 +235,15 @@ def test_api_key_generation_server_error_mock():
     
     # Przygotuj mock dla bazy danych z błędem podczas commit
     class MockDB:
+        def query(self, model):
+            class MockFilter:
+                def filter(self, *args, **kwargs):
+                    return self
+                
+                def first(self):
+                    return mock_user  # Zwraca użytkownika
+            return MockFilter()
+            
         def add(self, obj):
             pass
             
@@ -273,15 +282,19 @@ def test_api_key_generation_server_error_mock():
         # Przywróć oryginalną zależność bazy danych
         if original_db_override:
             app.dependency_overrides[get_db] = original_db_override
+        else:
+            del app.dependency_overrides[get_db]
 
 def test_revoke_api_key_mock():
     """Test revoking an API key using mocks"""
     # Stwórz mocka użytkownika
-    mock_user = MagicMock()
+    mock_user = MagicMock(spec=User)
     mock_user.id = 1
+    mock_user.username = "testuser"
     
     # Przygotuj mock dla klucza API
-    mock_api_key = MagicMock()
+    mock_api_key = MagicMock(spec=ApiKey)
+    mock_api_key.id = 1
     mock_api_key.user_id = 1
     mock_api_key.revoked = False
     
@@ -297,6 +310,9 @@ def test_revoke_api_key_mock():
             return MockFilter()
             
         def commit(self):
+            pass
+            
+        def rollback(self):
             pass
     
     # Nadpisz zależności
@@ -323,6 +339,8 @@ def test_revoke_api_key_mock():
         # Przywróć oryginalną zależność bazy danych
         if original_db_override:
             app.dependency_overrides[get_db] = original_db_override
+        else:
+            del app.dependency_overrides[get_db]
 
 def test_revoke_api_key_not_found_mock():
     """Test attempt to revoke a non-existent API key using mocks"""
@@ -367,15 +385,19 @@ def test_revoke_api_key_not_found_mock():
         # Przywróć oryginalną zależność bazy danych
         if original_db_override:
             app.dependency_overrides[get_db] = original_db_override
+        else:
+            del app.dependency_overrides[get_db]
 
 def test_revoke_api_key_server_error_mock():
     """Test error handling during API key revocation using mocks"""
     # Stwórz mocka użytkownika
-    mock_user = MagicMock()
+    mock_user = MagicMock(spec=User)
     mock_user.id = 1
+    mock_user.username = "testuser"
     
     # Przygotuj mock dla klucza API
-    mock_api_key = MagicMock()
+    mock_api_key = MagicMock(spec=ApiKey)
+    mock_api_key.id = 1
     mock_api_key.user_id = 1
     mock_api_key.revoked = False
     
@@ -419,3 +441,5 @@ def test_revoke_api_key_server_error_mock():
         # Przywróć oryginalną zależność bazy danych
         if original_db_override:
             app.dependency_overrides[get_db] = original_db_override
+        else:
+            del app.dependency_overrides[get_db]

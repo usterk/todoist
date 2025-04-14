@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.auth.auth import get_current_user, get_current_user_from_token, get_current_user_from_api_key, oauth2_scheme
 from app.database.database import get_db
+from app.schemas.user import UserResponse
 
 router = APIRouter(
     prefix="/protected",
@@ -57,6 +58,40 @@ async def protected_endpoint(
         "username": current_user.username,
         "email": current_user.email,
     }
+
+
+@router.get(
+    "/users/me",
+    summary="Get current user information",
+    description="Returns information about the authenticated user",
+    response_model=UserResponse,
+)
+async def get_current_user_info(
+    current_user: User = Depends(get_current_user)
+) -> UserResponse:
+    """
+    Get current user information.
+    
+    This endpoint returns information about the currently authenticated user.
+    It can be accessed using either a valid JWT token or a valid API key.
+    
+    Args:
+        current_user: The authenticated user
+        
+    Returns:
+        UserResponse: Information about the authenticated user
+        
+    Raises:
+        HTTPException: If authentication fails (401 Unauthorized)
+    """
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return current_user
 
 
 @router.get(

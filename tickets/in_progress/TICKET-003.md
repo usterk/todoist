@@ -2,7 +2,7 @@
 
 ## Metadata
 * **Ticket ID:** TICKET-003
-* **Status:** in_progress
+* **Status:** done
 * **Priority:** high
 * **Assigned to:** copilot
 * **Created on:** 2023-11-27
@@ -18,47 +18,58 @@ Implement API key generation functionality and middleware for API key validation
 ## Implementation Details
 
 ### API Key Generation
-1. Update the ApiKey model in app/models/user.py to ensure it has all required fields:
+1. Model ApiKey został już poprawnie zdefiniowany w app/models/user.py z wymaganymi polami:
    - id (primary key)
-   - user_id (foreign key to users table)
-   - key_value (unique API key string)
-   - description (optional description for the API key)
-   - last_used (timestamp when the key was last used)
-   - created_at (timestamp when the key was created)
-   - revoked (boolean flag to indicate if the key is revoked)
+   - user_id (foreign key do tabeli users)
+   - key_value (unikalny ciąg znaków klucza API)
+   - description (opcjonalny opis klucza API)
+   - last_used (timestamp ostatniego użycia klucza)
+   - created_at (timestamp utworzenia klucza)
+   - revoked (flaga określająca czy klucz został cofnięty)
 
-2. Update the ApiKeyCreate and ApiKeyResponse schemas in app/schemas/user.py:
-   - ApiKeyCreate: description field (optional)
-   - ApiKeyResponse: id, key_value, description, created_at fields
+2. Schematy ApiKeyCreate i ApiKeyResponse zostały zaktualizowane w app/schemas/user.py:
+   - ApiKeyCreate: pole description (opcjonalne)
+   - ApiKeyResponse: pola id, key_value, description, created_at
 
-3. Implement the generate_api_key function in app/api/auth.py:
-   - Generate a secure random API key
-   - Store the API key in the database with user association
-   - Return the API key to the client
+3. Implementacja funkcji generowania kluczy API w app/api/auth.py:
+   - POST /api/auth/apikey/generate endpoint
+   - Generowanie bezpiecznego losowego klucza API
+   - Przechowywanie klucza API w bazie danych z powiązaniem do użytkownika
+   - Zwracanie klucza API do klienta
+
+4. Implementacja funkcji cofania kluczy API:
+   - POST /api/auth/apikey/revoke/{key_id} endpoint
+   - Oznaczanie klucza API jako cofniętego (revoked=True)
+   - Weryfikacja, że użytkownik może cofnąć tylko swoje własne klucze API
 
 ### API Key Middleware
-1. Create an API key validation middleware:
-   - Extract the API key from the x-api-key header
-   - Look up the key in the database
-   - Check if the key is revoked
-   - Associate the user with the request
-   - Return 401 Unauthorized if the key is invalid/revoked
+1. Middleware walidacji kluczy API:
+   - Funkcja get_current_user_from_api_key ekstrahuje klucz API z nagłówka x-api-key
+   - Weryfikacja klucza API w bazie danych
+   - Sprawdzenie czy klucz nie został cofnięty
+   - Przypisanie użytkownika do żądania
+   - Zwrócenie błędu 401 Unauthorized jeśli klucz jest nieprawidłowy/cofnięty
 
-2. Update the authentication flow to:
-   - First check for JWT token in Authorization header
-   - If no valid JWT token, check for API key in x-api-key header
-   - Return 401 Unauthorized if both authentication methods fail
+2. Aktualizacja przepływu uwierzytelniania:
+   - Funkcja get_current_user najpierw sprawdza token JWT w nagłówku Authorization
+   - Jeśli nie ma ważnego tokena JWT, sprawdza klucz API w nagłówku x-api-key
+   - Zwraca błąd 401 Unauthorized jeśli obie metody uwierzytelniania zawiodą
 
-### Testing
-1. Write comprehensive unit tests for:
-   - API key generation functionality
-   - API key validation
-   - API key middleware
+3. Endpoint do pobierania informacji o zalogowanym użytkowniku:
+   - GET /api/users/me zwraca dane użytkownika dla obu metod uwierzytelniania
 
-2. Write E2E tests that cover:
-   - User login and API key generation
-   - API endpoint access using API key authentication
-   - API key revocation and subsequent authentication failure
+### Implementacja testów
+1. Testy jednostkowe:
+   - Testy generowania kluczy API
+   - Testy walidacji kluczy API
+   - Testy cofania kluczy API
+   - Testy middleware uwierzytelniania z kluczami API
+   - Testy obsługi błędów
+
+2. Testy E2E:
+   - Testy logowania użytkownika i generowania klucza API
+   - Testy dostępu do endpointów API przy użyciu uwierzytelniania kluczem API
+   - Testy cofania klucza API i następującej po tym nieudanej próby uwierzytelnienia
 
 ## Tasks
 - [x] Implement POST /api/auth/apikey/generate endpoint
@@ -95,3 +106,8 @@ Initial ticket creation for API Key generation and middleware functionality.
 - Created API key revocation endpoint
 - Added E2E tests for API key authentication
 - Updated OpenAPI documentation for API key endpoints
+
+### [2023-11-28 16:00] - Ticket completed
+- All tasks have been completed
+- All tests pass successfully
+- Moved ticket to done status

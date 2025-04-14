@@ -15,7 +15,7 @@ def test_api_key_generation(base_url, api_session, auth_test_user):
         json={"description": "E2E Test API Key"}
     )
     
-    assert response.status_code == 200, f"Failed to generate API key: {response.text}"
+    assert response.status_code == 201, f"Failed to generate API key: {response.text}"
     api_key_data = response.json()
     assert "key_value" in api_key_data
     assert "description" in api_key_data
@@ -73,7 +73,7 @@ def test_api_key_generation_and_revocation(base_url, api_session, auth_test_user
         json={"description": "Revocation Test Key"}
     )
     
-    assert response.status_code == 200
+    assert response.status_code == 201, f"Failed to generate API key: {response.text}"
     api_key_data = response.json()
     api_key = api_key_data["key_value"]
     api_key_id = api_key_data["id"]
@@ -83,18 +83,18 @@ def test_api_key_generation_and_revocation(base_url, api_session, auth_test_user
         urljoin(base_url, "/api/users/me"),
         headers={"x-api-key": api_key}
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Failed to authenticate with API key: {response.text}"
     
     # Revoke the API key
     response = api_session.post(
         urljoin(base_url, f"/api/auth/apikey/revoke/{api_key_id}"),
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Failed to revoke API key: {response.text}"
     
     # Verify API key no longer works
     response = api_session.get(
         urljoin(base_url, "/api/users/me"),
         headers={"x-api-key": api_key}
     )
-    assert response.status_code == 401
+    assert response.status_code == 401, f"Expected 401 for revoked API key, got {response.status_code}"

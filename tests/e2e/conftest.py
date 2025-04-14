@@ -10,7 +10,7 @@ import subprocess
 import logging
 import random
 import string
-from typing import Generator, Optional
+from typing import Generator, Optional, Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -204,3 +204,112 @@ def api_test_user(api_session, base_url) -> Optional[dict]:
     except Exception as e:
         logger.exception(f"Error creating test user: {str(e)}")
         return None
+
+
+def create_unique_user_data() -> Tuple[str, str, str]:
+    """
+    Generate unique user data for tests to avoid conflicts.
+    
+    Returns:
+        Tuple containing username, email, and password
+    """
+    # Use both timestamp and random string to ensure uniqueness
+    timestamp = int(time.time())
+    random_str = ''.join(random.choices(string.ascii_lowercase, k=8))
+    username = f"testuser_{timestamp}_{random_str}"
+    email = f"test_{timestamp}_{random_str}@example.com"
+    password = "TestPassword123"
+    return username, email, password
+
+
+def create_test_user(api_session, base_url) -> Tuple[str, str, str]:
+    """
+    Helper function to create a test user for login and authentication tests.
+    
+    Returns:
+        Tuple containing username, email, and password of the created user
+    """
+    # Generate unique credentials
+    username, email, password = create_unique_user_data()
+    
+    # Try to register
+    response = api_session.post(
+        f"{base_url}/api/auth/register",
+        json={
+            "username": username,
+            "email": email,
+            "password": password
+        }
+    )
+    
+    # If registration succeeds, return credentials
+    if response.status_code == 201:
+        return username, email, password
+    
+    # If email already registered, try again with new credentials
+    if response.status_code == 400 and "already registered" in response.text:
+        logger.warning("Email or username already registered, trying again with new credentials")
+        return create_test_user(api_session, base_url)
+    
+    # If some other error occurred, fail the test
+    assert response.status_code == 201, f"Failed to create test user: {response.text}"
+    return username, email, password
+
+
+def get_auth_token(api_session, base_url, email: str, password: str) -> str:
+    """
+    Helper function to get an authentication token.
+    
+    Args:
+        api_session: Session for API calls
+        base_url: API base URL
+        email: User email
+        password: User password
+        
+    Returns:
+        JWT token string
+    """
+    response = api_session.post(
+        f"{base_url}/api/auth/login",
+        json={
+            "email": email,
+            "password": password
+        }
+    )
+    
+    assert response.status_code == 200, f"Failed to get auth token: {response.text}"
+    data = response.json()
+    assert "access_token" in data, "Response does not contain access_token"
+    return data["access_token"]
+
+
+@pytest.fixture(scope="function")
+def auth_test_user(api_session, base_url) -> Dict[str, str]:
+    """
+    Create a test user with valid credentials and token for authentication tests.
+    
+    Returns:
+        Dict with username, email, password, and token
+    """
+    username, email, password = create_test_user(api_session, base_url)
+    token = get_auth_token(api_session, base_url, email, password)
+    
+    # Get user ID by accessing the /api/users/me endpoint with the token
+    user_response = api_session.get(
+        f"{base_url}/api/users/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    
+    if user_response.status_code != 200:
+        logger.warning(f"Failed to get user details: {user_response.text}")
+        user_id = None
+    else:
+        user_id = user_response.json().get("id")
+    
+    return {
+        "id": user_id,
+        "username": username,
+        "email": email,
+        "password": password,
+        "token": token
+    }
