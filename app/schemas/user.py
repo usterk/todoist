@@ -46,6 +46,31 @@ class UserResponse(UserBase):
         orm_mode = True
 
 
+class UserUpdate(BaseModel):
+    """Schema for user update data."""
+    username: Optional[str] = Field(None, min_length=3, max_length=50, example="johndoe_updated")
+    email: Optional[EmailStr] = Field(None, example="john_updated@example.com")
+    password: Optional[str] = Field(None, min_length=8, example="NewSecurePassword123")
+    
+    @validator('password')
+    def password_strength(cls, v):
+        """Validate password strength if provided."""
+        if v is None:
+            return v
+            
+        if not any(char.isdigit() for char in v):
+            raise ValueError('Password must contain at least one digit')
+        if not any(char.isupper() for char in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(char.islower() for char in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        return v
+
+    class Config:
+        """Pydantic configuration."""
+        orm_mode = True
+
+
 class Token(BaseModel):
     """Schema for authentication token response."""
     access_token: str
