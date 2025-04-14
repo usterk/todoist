@@ -80,10 +80,10 @@ All endpoints will follow RESTful design principles and return appropriate HTTP 
   - [x] Test GET /api/users/me
   - [x] Test PUT /api/users/:userId
   - [x] Test DELETE /api/users/:userId
-- [ ] Run all tests run_command run.sh test
-  - [ ] Fix test failures related to unique constraints
-  - [ ] Fix issues with /api/users/me endpoint
-  - [ ] Fix error in user deletion
+- [x] Run all tests
+  - [x] Fix test failures related to unique constraints
+  - [x] Fix issues with /api/users/me endpoint
+  - [x] Fix error in user deletion
 - [x] Update documentation
   - [x] Add OpenAPI documentation for all endpoints
 - [x] Update project changelog

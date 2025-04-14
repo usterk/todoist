@@ -21,6 +21,9 @@ class User(Base):
     
     # Relationship with API keys
     api_keys = relationship("ApiKey", back_populates="user")
+    
+    # Relationship with projects
+    projects = relationship("Project", back_populates="owner")
 
 
 class ApiKey(Base):
