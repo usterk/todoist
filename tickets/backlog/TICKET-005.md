@@ -65,10 +65,8 @@ Create endpoints for managing projects:
   - [ ] Handle associated resources
   - [ ] Return appropriate status code
 - [ ] Write unit tests and e2e tests for all endpoints
-- [ ] Run all tests
-  - [ ] Fix test failures related to unique constraints
-  - [ ] Fix issues with /api/users/me endpoint
-  - [ ] Fix error in user deletion
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation for all endpoints
 - [ ] Update project changelog

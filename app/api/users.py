@@ -125,8 +125,8 @@ async def get_user(
     }
 )
 async def update_user(
+    user_data: UserUpdate,
     user_id: int = Path(..., title="The ID of the user to update", ge=1),
-    user_data: UserUpdate = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> UserResponse:
@@ -137,8 +137,8 @@ async def update_user(
     If email or username is updated, checks for conflicts with existing users.
     
     Args:
-        user_id: ID of the user to update
         user_data: Updated user data (username, email, password)
+        user_id: ID of the user to update
         current_user: The authenticated user
         db: Database session
         
