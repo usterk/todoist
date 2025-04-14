@@ -43,6 +43,14 @@ async def protected_endpoint(
     Raises:
         HTTPException: If authentication fails (401 Unauthorized)
     """
+    # Sprawdź czy użytkownik istnieje
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
     return {
         "message": "You have access to this protected endpoint",
         "user_id": current_user.id,
@@ -98,8 +106,10 @@ async def jwt_only_endpoint(
             "auth_method": "JWT token",
         }
     except HTTPException as e:
+        # Przepuszczamy wyjątki HTTPException bez zmian
         raise e
     except Exception as e:
+        # Dla innych wyjątków tworzymy specjalną wiadomość
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"JWT token authentication failed: {str(e)}",

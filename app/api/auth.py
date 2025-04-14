@@ -5,6 +5,7 @@ Authentication endpoints for user registration and login.
 from datetime import timedelta
 import secrets
 import string
+import logging  # Dodany import loggera
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,9 @@ from app.database.database import get_db
 from app.models.user import User, ApiKey
 from app.schemas.user import UserCreate, UserResponse, UserLogin, Token, ApiKeyCreate, ApiKeyResponse
 from app.auth.auth import authenticate_user, create_access_token, get_password_hash, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
+
+# Konfiguracja loggera
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     tags=["authentication"],
