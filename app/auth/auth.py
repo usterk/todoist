@@ -296,7 +296,8 @@ async def get_current_user_from_api_key(
         try:
             # Try the standard way first
             try:
-                user = db.query(User).get(api_key.user_id)
+                # Używamy zalecanej metody Session.get() zamiast Query.get()
+                user = db.get(User, api_key.user_id)
             except (AttributeError, Exception):
                 # Try alternative patterns used in tests
                 try:
@@ -445,7 +446,7 @@ async def get_current_user(
                 api_key = db.query(ApiKey).filter(ApiKey.key_value == x_api_key).first()
                 
                 if api_key and not getattr(api_key, 'revoked', False):
-                    user = db.query(User).get(api_key.user_id)
+                    user = db.get(User, api_key.user_id)
                     
                     if user:
                         # Update last used timestamp
