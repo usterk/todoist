@@ -70,13 +70,9 @@ Create endpoints for managing subtasks:
 - [ ] Implement DELETE /api/tasks/:taskId/subtasks/:subtaskId endpoint
   - [ ] Create route and controller function
   - [ ] Return appropriate status code
-- [ ] Write tests
-  - [ ] Test POST /api/tasks/:taskId/subtasks
-  - [ ] Test GET /api/tasks/:taskId/subtasks
-  - [ ] Test GET /api/tasks/:taskId/subtasks/:subtaskId
-  - [ ] Test PUT /api/tasks/:taskId/subtasks/:subtaskId
-  - [ ] Test PATCH /api/tasks/:taskId/subtasks/:subtaskId/complete
-  - [ ] Test DELETE /api/tasks/:taskId/subtasks/:subtaskId
+- [ ] Write unit tests and e2e tests for all endpoints
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation for all endpoints
 - [ ] Update project changelog

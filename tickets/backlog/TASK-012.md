@@ -30,10 +30,9 @@ Enhance the GET /api/tasks endpoint to support advanced filtering capabilities. 
 - [ ] Implement pagination and sorting
   - [ ] Add limit and offset parameters
   - [ ] Add sortBy and sortDir parameters
-- [ ] Write tests
-  - [ ] Unit tests for filter combinations
-  - [ ] Integration tests for filtering endpoints
-  - [ ] Test edge cases (invalid parameters, out-of-range values)
+- [ ] Write unit tests and e2e tests for all endpoints
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation with examples for filter usage
   - [ ] Create usage guide with common filter patterns

@@ -27,9 +27,9 @@ Implement complete CRUD operations for labels (tags) that can be attached to tas
 - [ ] Implement Task-Label association endpoints
   - [ ] POST /api/tasks/:taskId/labels/:labelId - attach label to task
   - [ ] DELETE /api/tasks/:taskId/labels/:labelId - detach label from task
-- [ ] Write tests
-  - [ ] Unit tests for CRUD operations on labels
-  - [ ] Integration tests for attaching/detaching labels to tasks
+- [ ] Write unit tests and e2e tests for all endpoints
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation for all new endpoints
 - [ ] Update project changelog

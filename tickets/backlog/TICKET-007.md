@@ -74,13 +74,9 @@ Create endpoints for managing tasks:
   - [ ] Create route and controller function
   - [ ] Handle associated resources
   - [ ] Return appropriate status code
-- [ ] Write tests
-  - [ ] Test POST /api/tasks
-  - [ ] Test GET /api/tasks
-  - [ ] Test GET /api/tasks/:taskId
-  - [ ] Test PUT /api/tasks/:taskId
-  - [ ] Test PATCH /api/tasks/:taskId/complete
-  - [ ] Test DELETE /api/tasks/:taskId
+- [ ] Write unit tests and e2e tests for all endpoints
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation for all endpoints
 - [ ] Update project changelog

@@ -24,9 +24,9 @@ Implement complete CRUD operations for comments on tasks. This will allow users 
   - [ ] POST /api/tasks/:taskId/comments - create a new comment
   - [ ] PUT /api/tasks/:taskId/comments/:commentId - update a comment
   - [ ] DELETE /api/tasks/:taskId/comments/:commentId - delete a comment
-- [ ] Write tests
-  - [ ] Unit tests for CRUD operations on comments
-  - [ ] Integration tests for comments endpoints
+- [ ] Write unit tests and e2e tests for all endpoints
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation for all new endpoints
 - [ ] Update project changelog
