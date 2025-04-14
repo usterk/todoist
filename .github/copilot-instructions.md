@@ -14,7 +14,7 @@ Include docstrings for all modules, classes, and functions.
 Organize imports in three groups: standard library, third-party, local application.
 
 ## Testing
-Use pytest as the primary testing framework. (./run.sh test)
+Use pytest as the primary testing framework. (shell-command run_command: ./run.sh test)
 Write unit tests for all business logic.
 Include integration tests for API endpoints.
 Aim for at least 80% code coverage.
@@ -28,6 +28,8 @@ Prioritize readability and maintainability.
 Follow the DRY (Don't Repeat Yourself) principle.
 Handle errors explicitly with appropriate status codes and messages.
 Include proper logging for debugging and monitoring.
+
+- Always use `run_command` from `mcp-shell-command` when executing shell commands, such as `git`, `./run.sh`, or `date`.
 
 ## Ticket management
 - Only work on tickets explicitly assigned to 'copilot'
