@@ -10,6 +10,7 @@ from app.api.health import router as health_router
 from app.api.auth import router as auth_router
 from app.api.protected import router as protected_router
 from app.api.users import router as users_router
+from app.api.projects import router as projects_router
 from app.database.init_db import init_db
 from app.models.user import User
 from app.auth.auth import get_current_user
@@ -46,6 +47,7 @@ app.include_router(health_router, tags=["health"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(protected_router, prefix="/api", tags=["protected"])
 app.include_router(users_router, prefix="/api", tags=["users"])
+app.include_router(projects_router)
 
 @app.on_event("startup")
 async def startup_db_client():
