@@ -9,6 +9,7 @@ import uvicorn
 from app.api.health import router as health_router
 from app.api.auth import router as auth_router
 from app.api.protected import router as protected_router
+from app.api.users import router as users_router
 from app.database.init_db import init_db
 from app.models.user import User
 from app.auth.auth import get_current_user
@@ -44,34 +45,7 @@ app.add_middleware(
 app.include_router(health_router, tags=["health"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(protected_router, prefix="/api", tags=["protected"])
-
-# Dodanie endpointu /api/users/me wymaganego przez testy
-users_router = APIRouter(prefix="/api/users", tags=["users"])
-
-@users_router.get(
-    "/me",
-    response_model=UserResponse,
-    summary="Get current user information",
-    description="Returns information about the authenticated user",
-)
-async def get_current_user_info(
-    current_user: User = Depends(get_current_user)
-) -> UserResponse:
-    """
-    Get information about the currently authenticated user.
-    
-    This endpoint can be accessed using either a valid JWT token or a valid API key.
-    
-    Args:
-        current_user: The authenticated user
-        
-    Returns:
-        UserResponse: Information about the authenticated user
-    """
-    return current_user
-
-# Dodanie routera użytkowników do aplikacji
-app.include_router(users_router)
+app.include_router(users_router, prefix="/api", tags=["users"])
 
 @app.on_event("startup")
 async def startup_db_client():

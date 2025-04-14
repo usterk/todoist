@@ -64,12 +64,9 @@ Create endpoints for managing projects:
   - [ ] Create route and controller function
   - [ ] Handle associated resources
   - [ ] Return appropriate status code
-- [ ] Write tests
-  - [ ] Test POST /api/projects
-  - [ ] Test GET /api/projects
-  - [ ] Test GET /api/projects/:projectId
-  - [ ] Test PUT /api/projects/:projectId
-  - [ ] Test DELETE /api/projects/:projectId
+- [ ] Write unit tests and e2e tests for all endpoints
+- [ ] Run all tests 
+  - [ ] Ensure all tests pass
 - [ ] Update documentation
   - [ ] Add OpenAPI documentation for all endpoints
 - [ ] Update project changelog
